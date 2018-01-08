@@ -7,15 +7,15 @@ from __future__ import division, print_function
 import numpy as np
 import sys
 
-sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+sys.path.append(r'C:\Users\xub\OneDrive - Coherent, Inc\Python project\Packages\lib')
 
 from simulation.ode import cpu
-from simulation.ode import gpu
+from simulation.ode import gpu32
 from simulation.ode import parallel as pl
 
 from plot import xy
 
-from math import exp
+from cmath import exp
 from numba import cuda
 
 def Gau(w0, wt, x, y, t):
@@ -49,6 +49,7 @@ if __name__ == "__main__":
     wls =np.array([.607, .607, .303])
     
     args = np.append(para(wls, deff, ns),0) # 4 element array
+    args = tuple(args) #cuda.jit only takes tuple. CRITICAL!!!
     
     x = np.linspace(-128*1, 127*1, xsize)
     y = np.linspace(-128*1, 127*1, ysize)
@@ -57,7 +58,9 @@ if __name__ == "__main__":
     
     E = 100*Gau(w0, 10, xx, yy, 0)
     
-    E1 = np.empty((xsize, ysize, 3), dtype=np.complex128)
+    E = E.astype(np.complex64) #declaration of the data type is CRITITCAL for cuda.jit
+    
+    E1 = np.empty((xsize, ysize, 3), dtype=np.complex64)
     
     x0, x1 = 0, 5000 
     
@@ -72,16 +75,17 @@ if __name__ == "__main__":
     end = timer()
     cpu_t = end-start
     print("cpu parallel time-cost: {} s".format(cpu_t))
-    
+#    
     A = E.copy()
     B = E.copy()
-    C = np.zeros_like(E,dtype=np.complex128)
+    C = np.zeros_like(E,dtype=np.complex64)
+#    
+    E2 = np.empty((xsize, ysize, 3), dtype=np.complex64)
     
-    E2 = np.empty((xsize, ysize, 3), dtype=np.complex128)
 # gpu parallel computing -> E2
     start = timer()
     
-    test = gpu.ode(0, 5000, gf, 3, args)#overhead
+    test = gpu32.ode(x0, x1, gf, 3, args)#overhead
     
     test.move([A, B, C], [E2[:,:,i] for i in range(3)])
     
@@ -90,7 +94,7 @@ if __name__ == "__main__":
     print ("gpu parallel time-cost: {} s".format(gpu_t))
     
 # cpu numpy broadcast computing -> E3
-    E3 = np.empty((xsize, ysize, 3), dtype=np.complex128)
+    E3 = np.empty((xsize, ysize, 3), dtype=np.complex64)
     
     start = timer()
     y0 = A, B, C
