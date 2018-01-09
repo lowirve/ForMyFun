@@ -8,12 +8,11 @@ import numpy as np
 import sys
 
 sys.path.append(r'C:\Users\xub\OneDrive - Coherent, Inc\Python project\Packages\lib')
+#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
 from simulation.ode import cpu
 from simulation.ode import gpu32
 from simulation.ode import parallel as pl
-
-from plot import xy
 
 from cmath import exp
 from numba import cuda
@@ -35,12 +34,9 @@ def gf(x, y, arg, h):
     dydx2 = 1j*arg[2]*y[0]*y[1]*exp(-1j*arg[3]*x)*h
     return dydx0, dydx1, dydx2 
     
-if __name__ == "__main__": 
+def comparison(xsize, ysize):
     
     from timeit import default_timer as timer
-
-    xsize = 256
-    ysize = 256
     
     w0 = 500 # 500um
     
@@ -106,9 +102,39 @@ if __name__ == "__main__":
     
     print("cpu vs gpu results are same: {}".format(np.allclose(E1, E2)))
     print("cpu vs numpy results are same: {}".format(np.allclose(E1, E3)))
+    print()
     
-    xy.image(E1[:,:,2])
-    xy.image(E2[:,:,2])
-    xy.image(E3[:,:,2])
+#    xy.image(E1[:,:,2])
+#    xy.image(E2[:,:,2])
+#    xy.image(E3[:,:,2])
     
+    return [cpu_t, gpu_t, numpy_t]
     
+if __name__ == "__main__": 
+
+#    tests = [(16,16), (32,32), (64,64), (128,128), (256,256), (512,512), (1024,1024)]  
+#    
+#    c = []
+#    g = []
+#    n = []
+#    
+#    for i, test in enumerate(tests):
+#        print('trail {0}\ntest: {1}'.format(i+1,test))
+#        temp = comparison(*test)
+#        c.append(temp[0])
+#        g.append(temp[1])
+#        n.append(temp[2])
+        
+    import matplotlib.pyplot as plt
+
+    fig, ax = plt.subplots()
+    xaxis = [test[0]*test[1] for test in tests]
+    line1, = ax.plot(xaxis, c, marker='s', label='cpu multipleprocessing')    
+    line2, = ax.plot(xaxis, g, marker='o', label='gpu cuda')  
+    line3, = ax.plot(xaxis, n, marker='v', label='cpu numpy')
+    ax.legend(loc='upper left')
+    ax.set_xscale('log')
+    plt.show()      
+        
+        
+        

@@ -9,7 +9,7 @@ It needs Sellmeiers equation and tensor d, which is stored in a namedtuple for e
 
 """
 import numpy as np
-from Data import *
+from data import *
 
 
 class crystal(object):

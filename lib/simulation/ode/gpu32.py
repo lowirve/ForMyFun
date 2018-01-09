@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan 04 10:47:15 2018
 
-@author: XuBo
 """
 
 from __future__ import division, print_function
