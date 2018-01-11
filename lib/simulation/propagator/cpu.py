@@ -8,8 +8,8 @@ from __future__ import division, print_function
 import numpy as np
 
 import sys
-sys.path.append(r'C:\Users\xub\OneDrive - Coherent, Inc\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+#sys.path.append(r'C:\Users\xub\OneDrive - Coherent, Inc\Python project\Packages\lib')
+sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
 from simulation.crystals import crystal
 from plot.xy import image
