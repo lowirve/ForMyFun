@@ -1,11 +1,14 @@
 # -*- coding: utf-8 -*-
 """
-
+tst
 """
+from __future__ import division, print_function
 
-from __future__ import division, print_function  
+from numba import cuda
+from pyculib import fft
 
 import numpy as np
+from cmath import exp
 
 import sys
 sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
@@ -13,6 +16,7 @@ sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
 
 from simulation.crystals import crystal
 from simulation.coordinate import xy, xyt
+
 
 c = 2.99792458e2 # unit is (um/ps) 
 
@@ -70,48 +74,118 @@ def phase(kx, ky, para, key, dw=None):
             return kx*para['kx']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']#+kc#full phase
         else:
             return ky*para['ky']+kx*ky*para['kxky']+kx**2/2/kc*para['kx2']+ky**2/2/kc*para['ky2']#+kc#full phase
+        
+@cuda.jit#('void(complex128[:,:], complex128[:,:])')
+def multiple2(A, B):
+    i, j = cuda.grid(2)
+    if i < A.shape[0] and j < A.shape[1]:
+        A[i,j] *= exp(B[i,j])  
+        
+@cuda.jit#('void(complex128[:,:,:], complex128[:,:,:])')
+def multiple3(A, B):
+    i, j, k = cuda.grid(3)
+    if i < A.shape[0] and j < A.shape[1] and k < A.shape[2]:
+        A[i,j,k] *= exp(B[i,j,k]) 
  
+    
 class propagator(object):    
     
-    def __init__(self, crys, coord, key):
+    def __init__(self, crys, coord, key, stream=None):
         self.para = kpara(crys, key)
         self.key = key
+        if stream is None:
+            self.stream = cuda.stream()
+        else:
+            self.stream = stream
         
         if type(coord) == xy:
             self.phase = phase(coord.kxx, coord.kyy, self.para, key)
+            
+            TPB = np.array([16, 16])
+            BPG = np.array(self.phase.shape)/TPB
+            BPG = BPG.astype(np.int)
+            
+            self.gridim = tuple(BPG)
+            self.threadim = tuple(TPB)
         
         elif type(coord) == xyt: #xy is the superclass of xyt. So isinstance(xyt(), xy) returns true. Type(), on the other hand, returns false.
             self.phase = phase(coord.kxxx, coord.kyyy, self.para, key, coord.www)
+                    
+            TPB = np.array([16, 16, 4])
+            BPG = np.array(self.phase.shape)/TPB
+            BPG = BPG.astype(np.int)
+            
+            self.gridim = tuple(BPG)
+            self.threadim = tuple(TPB)
             
     def load(self, init, dz):
         if self.phase.shape != init.shape:
             raise ValueError("Input doesn't match.")
         
-        self.kdata = np.fft.fftn(init)
-        self._move = np.exp(1j*self.phase*dz)
+        self._move = cuda.to_device(1j*dz*self.phase, stream=self.stream)
+        
+        self._data = cuda.to_device(init, stream=self.stream)
+        
+        fft.FFTPlan(shape=init.shape, itype=init.dtype, otype=init.dtype, stream=self.stream)
+        
+        fft.fft_inplace(self._data, stream=self.stream)        
+        self.stream.synchronize()        
         
     def move(self):
-        self.kdata = self.kdata*self._move
+        
+        if len(self.phase.shape) == 2:
+            multiple2[self.gridim, self.threadim, self.stream](self._data, self._move)
+            self.stream.synchronize()
+            
+        elif len(self.phase.shape) == 3:
+            multiple3[self.gridim, self.threadim, self.stream](self._data, self._move)
+            self.stream.synchronize()        
         
     def get(self):
-        return np.fft.ifftn(self.kdata)
+        """Once this function is performed, the device (gpu) memory handle is recycled."""
         
+        fft.ifft_inplace(self._data, stream=self.stream)
+        self.stream.synchronize()
+        
+        return self._data.copy_to_host(stream=self.stream)/np.prod(self.phase.shape)    
+    
 
 def xypropagator(E, x, y, dz, crys, key):
         
     kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])) # k in x
     ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])) # k in y   
     
-    kxx, kyy = np.meshgrid(kx, ky, indexing = 'ij') #xx, yy in k space
+    kxx, kyy = np.meshgrid(kx, ky, indexing='ij') #xx, yy in k space
     
     para = kpara(crys, key)
     kphase = phase(kxx, kyy, para, key)
     
-    kE = np.fft.fftn(E)
+    P = 1j*dz*kphase
     
-    kE2 = kE*np.exp(1j*kphase*dz)
+    TPB = np.array([16, 16])
+    BPG = np.array([x.size, y.size])/TPB
+    BPG = BPG.astype(np.int)
+    
+    gridim = tuple(BPG)
+    threadim = tuple(TPB)
+    
+    stream = cuda.stream()
+    
+    fft.FFTPlan(shape=E.shape, itype=E.dtype, otype=E.dtype, stream=stream)  
 
-    sol = np.fft.ifftn(kE2)
+    dE = cuda.to_device(E, stream=stream)
+    dP = cuda.to_device(P, stream=stream)
+    
+    fft.fft_inplace(dE, stream=stream)
+    stream.synchronize()
+    
+    multiple2[gridim, threadim, stream](dE, dP)
+    stream.synchronize()
+    
+    fft.ifft_inplace(dE, stream=stream)
+    stream.synchronize()
+    
+    sol = dE.copy_to_host(stream=stream)/np.prod(E.shape)
     
     return sol
 
@@ -120,24 +194,46 @@ def xytpropagator(E, x, y, t, dz, crys, key):
     kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])) # k in x
     ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])) # k in y
     dw = 2*np.pi*np.fft.fftfreq(t.size, d = (t[1]-t[0])) # dw in t
-
-    kxx, kyy, dww = np.meshgrid(kx, ky, dw, indexing = 'ij')
-
+    
+    kxx, kyy, dww = np.meshgrid(kx, ky, dw, indexing='ij')
+    
     para = kpara(crys, key)
-    kphase = phase(kxx, kyy, para, key, dww)
-  
-    kE = np.fft.fftn(E)
-      
-    kE2 = kE*np.exp(1j*kphase*dz)
-      
-    sol = np.fft.ifftn(kE2)
+
+    kphase = phase(kxx, kyy, para, key, dww) #most time-consuming step
+    
+    P = 1j*dz*kphase
+    
+    TPB = np.array([16, 16, 4])
+    BPG = np.array([x.size, y.size, t.size])/TPB
+    BPG = BPG.astype(np.int)
+    
+    gridim = tuple(BPG)
+    threadim = tuple(TPB)
+    
+    stream = cuda.stream()
+    
+    fft.FFTPlan(shape=E.shape, itype=E.dtype, otype=E.dtype, stream=stream)   
+
+    dE = cuda.to_device(E, stream=stream)
+    dP = cuda.to_device(P, stream=stream)
+    
+    fft.fft_inplace(dE, stream=stream)
+    stream.synchronize()
+    
+    multiple3[gridim, threadim, stream](dE, dP)
+    stream.synchronize()
+    
+    fft.ifft_inplace(dE, stream=stream)
+    stream.synchronize()
+    
+    sol = dE.copy_to_host(stream=stream)/np.prod(E.shape)
     
     return sol
+        
 
 
 if __name__ == '__main__':    
     
-    from plot.xy import image
     from timeit import default_timer as timer
     from simulation.crystals.data import lbo3
     
@@ -149,9 +245,9 @@ if __name__ == '__main__':
     wt = 30 # 30ps
     dz = 500 # 500um
     
-    xsize = 256
-    ysize = 128
-    tsize = 64
+    xsize = 512
+    ysize = 512
+    tsize = 256
         
     crys = crystal(lbo3, wl*1e3, 25, 90, 45)
     crys.show()
@@ -161,57 +257,57 @@ if __name__ == '__main__':
     x = np.linspace(-256*1, 256*1, xsize)
     y = np.linspace(-256*1, 256*1, ysize)
     
-    space1 = xy(x, y)
-   
-    E = Gau(w0, space1.xx, space1.yy)
+    xx, yy = np.meshgrid(x, y)
+    
+    E = Gau(w0, xx, yy) 
     E = E.astype(np.complex64)
     
-#    image(E)
-    
     start = timer()
- 
+    
     sol1 = xypropagator(E, x, y, dz, crys, key)
 
     end = timer()
     print(end - start)
     
-#    image(sol1)  
+    space1 = xy(x, y)
+    
+    E = Gau(w0, space1.xx, space1.yy)
+    E = E.astype(np.complex64)
     
     start = timer()
-    
+
     sol = propagator(crys, space1, key)
     
     sol.load(E, dz)
     sol.move()
- 
+    
     sol2 = sol.get()
     
     end = timer()
     print(end - start)
     
-#    image(sol2)  
-    
-    print(np.allclose(sol1, sol2))
-    
+    print(np.allclose(sol1, sol2)) 
+   
     x = np.linspace(-256*1, 256*1, xsize)
     y = np.linspace(-256*1, 256*1, ysize)
     t = np.linspace(-64*1, 63*1, tsize)
+    
+    xx, yy, tt = np.meshgrid(x, y, t)
+
+    E = Gau(w0, xx, yy, wt, tt)
+    E = E.astype(np.complex64)
+
+    start = timer()
+    
+    sol3 = xytpropagator(E, x, y, t, dz, crys, key)
+
+    end = timer()
+    print(end - start) 
     
     space2 = xyt(x, y, t)
     
     E = Gau(w0, space2.xxx, space2.yyy, wt, space2.ttt)
     E = E.astype(np.complex64)
-    
-#    image(E[:,:,tsize//2])
-    
-    start = timer()
-
-    sol3 = xytpropagator(E, x, y, t, dz, crys, key)
-    
-    end = timer()
-    print(end - start)   
-     
-#    image(sol2[:,:,tsize//2])   
     
     start = timer()
     
@@ -226,16 +322,4 @@ if __name__ == '__main__':
     print(end - start)
     
     print(np.allclose(sol3, sol4))
-    
-
-
-
-    
-
-    
-    
-    
-    
-    
-    
     

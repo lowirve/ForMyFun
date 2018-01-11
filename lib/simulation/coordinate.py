@@ -21,8 +21,8 @@ class xy(object):
         self.kx = 2*np.pi*fft.fftfreq(self.xsize, d = self.dx)#Beware that the fft space is swapped.
         self.ky = 2*np.pi*fft.fftfreq(self.ysize, d = self.dy)#Beware that the fft space is swapped.
         
-        self.xy = np.meshgrid(self.x, self.y, indexing = 'ij')
-        self.kxy = np.meshgrid(self.kx, self.ky, indexing = 'ij')#Beware that the fft space is swapped.
+        self.xx, self.yy = np.meshgrid(self.x, self.y, indexing = 'ij')
+        self.kxx, self.kyy = np.meshgrid(self.kx, self.ky, indexing = 'ij')#Beware that the fft space is swapped.
         
 class xyt(xy):
     def __init__(self, x, y, t):
@@ -35,8 +35,8 @@ class xyt(xy):
         
         self.w = 2*np.pi*fft.fftfreq(self.tsize, d = self.dt)#Beware that the fft space is swapped.
         
-        self.xyt = np.meshgrid(self.x, self.y, self.t, indexing = 'ij')
-        self.kxyw = np.meshgrid(self.kx, self.ky, self.w, indexing = 'ij')#Beware that the fft space is swapped.
+        self.xxx, self.yyy, self.ttt = np.meshgrid(self.x, self.y, self.t, indexing = 'ij')
+        self.kxxx, self.kyyy, self.www = np.meshgrid(self.kx, self.ky, self.w, indexing = 'ij')#Beware that the fft space is swapped.
         
 if __name__ == '__main__':
     xsize = 256
@@ -49,6 +49,8 @@ if __name__ == '__main__':
     
     test1 = xy(x, y)
     test2 = xyt(x, y, t)
+    
+    print(isinstance(test2,xyt))
     
     
     

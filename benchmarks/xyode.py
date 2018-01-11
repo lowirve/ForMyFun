@@ -7,7 +7,7 @@ from __future__ import division, print_function
 import numpy as np
 import sys
 
-sys.path.append(r'C:\Users\xub\OneDrive - Coherent, Inc\Python project\Packages\lib')
+sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
 #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
 from simulation.ode import cpu
@@ -112,18 +112,18 @@ def comparison(xsize, ysize):
     
 if __name__ == "__main__": 
 
-#    tests = [(16,16), (32,32), (64,64), (128,128), (256,256), (512,512), (1024,1024)]  
-#    
-#    c = []
-#    g = []
-#    n = []
-#    
-#    for i, test in enumerate(tests):
-#        print('trail {0}\ntest: {1}'.format(i+1,test))
-#        temp = comparison(*test)
-#        c.append(temp[0])
-#        g.append(temp[1])
-#        n.append(temp[2])
+    tests = [(16,16), (32,32), (64,64), (128,128), (256,256), (512,512), (1024,1024)]  
+    
+    c = []
+    g = []
+    n = []
+    
+    for i, test in enumerate(tests):
+        print('trail {0}\ntest: {1}'.format(i+1,test))
+        temp = comparison(*test)
+        c.append(temp[0])
+        g.append(temp[1])
+        n.append(temp[2])
         
     import matplotlib.pyplot as plt
 
