@@ -244,7 +244,7 @@ if __name__ == '__main__':
 #            print ('wl: {}, tt: {}, theta: {}, phi: {}'.format(wl, tt, theta, phi))
 #            test1(lbo)            
     
-    lbo = crystal(lbo3, 1064, 100, 45, 0)
+    lbo = crystal(lbo3, 532, 25, 90, 11.4)
 #    lbo.tt = 25
 #    lbo.wl = 532
 #    lbo.delta = 90

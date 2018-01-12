@@ -186,11 +186,12 @@ class ode(object):
         dC = cuda.to_device(lin[2], stream=stream)
         
         self.f[gridim, threadim, stream](dA, dB, dC)
-        stream.synchronize()
     
         lout[0][:] = dA.copy_to_host(stream=stream)
         lout[1][:] = dB.copy_to_host(stream=stream)
-        lout[2][:] = dC.copy_to_host(stream=stream)  
+        lout[2][:] = dC.copy_to_host(stream=stream) 
+        
+        stream.synchronize()
 
       
     

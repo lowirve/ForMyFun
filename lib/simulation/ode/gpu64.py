@@ -1,8 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Created on Thu Jan 04 10:47:15 2018
 
-@author: XuBo
 """
 
 from __future__ import division, print_function
@@ -16,7 +14,7 @@ class ode(object):
     """The current structure is time-invariant. 
     If the ode is affected by the initial state (x0), the current structure won't work."""
 
-    def __init__(self, x0, x1, gf, fsize, arg, hstart=10, nmax=10000, eps=1e-8, hmin=None, TPB=[16, 16]):
+    def __init__(self, x0, x1, gf, fsize, arg, hstart=10, nmax=10000, eps=1e-8, hmin=None, TPB=(16, 16)):
         #VERY HIGH OVERHEAD
         self.x0 = x0
         self.xq = x1
@@ -25,7 +23,7 @@ class ode(object):
         self.hstart = hstart              
         self.nmax = nmax
         self.eps = eps
-        self.TPB = TPB
+        self.threadim = TPB
         self.fsize = fsize
     
         if hmin is None:
@@ -170,43 +168,73 @@ class ode(object):
                 if jj >= nmax:
                     raise ValueError("Too many steps in routine odeint") 
             
-        self.f = godeint
-
-                        
-    def move(self, lin, lout):
-        TPB = np.array(self.TPB)
-        BPG = np.array(lin[0].shape)/TPB
-        BPG = BPG.astype(np.int)
-        
-        gridim = tuple(BPG)
-        threadim = tuple(TPB)
-        
-        stream = cuda.stream()
-        
-        dA = cuda.to_device(lin[0], stream=stream)
-        dB = cuda.to_device(lin[1], stream=stream)
-        dC = cuda.to_device(lin[2], stream=stream)
-        
-        self.f[gridim, threadim, stream](dA, dB, dC)
-        stream.synchronize()
+        self._f = godeint
     
-        lout[0][:] = dA.copy_to_host(stream=stream)
-        lout[1][:] = dB.copy_to_host(stream=stream)
-        lout[2][:] = dC.copy_to_host(stream=stream)  
+    def load(self, init, stream=None):
 
-      
+        BPG = np.array(init[0].shape)/np.array(self.threadim)
+        
+        self.gridim = tuple(BPG.astype(np.int))  
+        
+        if stream is None:
+            self.stream = cuda.stream()
+        else:
+            self.stream = stream
+
+        self.dA = cuda.to_device(init[0], stream=self.stream)
+        self.dB = cuda.to_device(init[1], stream=self.stream)
+        self.dC = cuda.to_device(init[2], stream=self.stream)
+        
+        self.stream.synchronize()
+        
+    def _load(self, init, stream, threadim=(16, 16)):
+        
+        self.threadim = threadim 
+        
+        BPG = np.array(init[0].shape)/np.array(self.threadim)
+        
+        self.gridim = tuple(BPG.astype(np.int)) 
+        
+        self.stream = stream
+
+        self.dA = init[0]
+        self.dB = init[1]
+        self.dC = init[2]
+                        
+    def move(self):
+        
+        self._f[self.gridim, self.threadim, self.stream](self.dA, self.dB, self.dC)  
+        
+        self.stream.synchronize()
+        
+    def get(self):
+    
+        sol = (self.dA.copy_to_host(stream=self.stream),
+               self.dB.copy_to_host(stream=self.stream),
+               self.dC.copy_to_host(stream=self.stream))
+        
+        self.stream.synchronize()
+        
+        return sol
+    
+    def _get(self):
+        
+        sol = (self.dA, self.dB, self.dC)
+        
+        return sol
     
 if __name__ == "__main__":
     
-    from timeit import default_timer as timer
+    import sys
 
-    @cuda.jit(device=True)
-    def gf(x, y, arg, h):#x is scalar, y is a tuple, arg is a tuple
-        dydx0 = 1j*arg[0]*y[1].conjugate()*y[2]*exp(1j*arg[3]*x)*h
-        dydx1 = 1j*arg[1]*y[0].conjugate()*y[2]*exp(1j*arg[3]*x)*h
-        dydx2 = 1j*arg[2]*y[0]*y[1]*exp(-1j*arg[3]*x)*h
-        return dydx0, dydx1, dydx2 
+    sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
+    #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
     
+    from timeit import default_timer as timer
+    from simulation.nonlinear.gpu import sfg   
+    
+    from plot.xy import image
+      
     xsize = 128
     ysize = 128
 
@@ -218,9 +246,9 @@ if __name__ == "__main__":
     def para(wl, d, n):
         return d/wl/n
     
-    ns = np.array([1.617, 1.617, 1.617])
-    deff = 4.47e-7
-    wls =np.array([.607, .607, .303])
+    ns = np.array([1.605, 1.605, 1.605])
+    deff = 8.32e-7
+    wls =np.array([1.064, 1.064, 1.064])
     
     args = np.append(para(wls, deff, ns),0) # 4 element array
     args = tuple(args)
@@ -242,14 +270,18 @@ if __name__ == "__main__":
 
     start = timer()
     
-    test = ode(0, 5000, gf, 3, args)#overhead
+    test = ode(0, 5000, sfg, 3, args)#overhead
     
     end = timer()   
     print (end-start)    
 
     start = timer()
     
-    test.move([A, B, C], [E2[:,:,i] for i in range(3)])
+    test.load([A, B, C])
+    
+    test.move()
+    
+    image(test.get()[2])
     
     end = timer()    
     print (end-start)

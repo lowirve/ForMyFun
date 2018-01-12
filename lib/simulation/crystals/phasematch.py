@@ -447,7 +447,7 @@ class phasematch(object):
 
    
 if __name__ == '__main__':    
-    p = phasematch(lbo3, [1064, 1064, 0], 149)
+    p = phasematch(lbo3, [1064, 1064, 0], 25)
     p.fprint('XY')
     
     

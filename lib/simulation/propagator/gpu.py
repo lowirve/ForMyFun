@@ -90,16 +90,14 @@ def multiple3(A, B):
     
 class propagator(object):    
     
-    def __init__(self, crys, coord, key, stream=None):
+    def __init__(self, crys, coord, key):
         self.para = kpara(crys, key)
         self.key = key
-        if stream is None:
-            self.stream = cuda.stream()
-        else:
-            self.stream = stream
         
         if type(coord) == xy:
             self.phase = phase(coord.kxx, coord.kyy, self.para, key)
+            
+            nnn = np.prod(self.phase.shape) 
             
             TPB = np.array([16, 16])
             BPG = np.array(self.phase.shape)/TPB
@@ -107,9 +105,18 @@ class propagator(object):
             
             self.gridim = tuple(BPG)
             self.threadim = tuple(TPB)
+            
+            @cuda.jit#('void(complex128[:,:], complex128[:,:])')
+            def division(A):
+                i, j = cuda.grid(2)
+                if i < A.shape[0] and j < A.shape[1]:
+                    A[i,j] /= nnn 
+            
         
         elif type(coord) == xyt: #xy is the superclass of xyt. So isinstance(xyt(), xy) returns true. Type(), on the other hand, returns false.
             self.phase = phase(coord.kxxx, coord.kyyy, self.para, key, coord.www)
+            
+            nnn = np.prod(self.phase.shape)
                     
             TPB = np.array([16, 16, 4])
             BPG = np.array(self.phase.shape)/TPB
@@ -118,7 +125,21 @@ class propagator(object):
             self.gridim = tuple(BPG)
             self.threadim = tuple(TPB)
             
-    def load(self, init, dz):
+            @cuda.jit#('void(complex128[:,:,:], complex128[:,:,:])')
+            def division(A):
+                i, j, k = cuda.grid(3)
+                if i < A.shape[0] and j < A.shape[1] and k < A.shape[2]:
+                    A[i,j,k] /= nnn
+            
+        self._division = division
+            
+    def load(self, init, dz, stream=None):
+        
+        if stream is None:
+            self.stream = cuda.stream()
+        else:
+            self.stream = stream        
+        
         if self.phase.shape != init.shape:
             raise ValueError("Input doesn't match.")
         
@@ -126,10 +147,23 @@ class propagator(object):
         
         self._data = cuda.to_device(init, stream=self.stream)
         
-        fft.FFTPlan(shape=init.shape, itype=init.dtype, otype=init.dtype, stream=self.stream)
+#        fft.FFTPlan(shape=self.phase.shape, itype=init.dtype, otype=init.dtype, stream=self.stream)
         
         fft.fft_inplace(self._data, stream=self.stream)        
-        self.stream.synchronize()        
+        self.stream.synchronize()      
+    
+    def _load(self, cuda_init, dz, stream, dtype=np.complex128):        
+        
+        self._move = cuda.to_device(1j*dz*self.phase, stream=self.stream)
+        
+        self._data = cuda_init
+        
+        self.stream = stream
+        
+#        fft.FFTPlan(shape=self.phase.shape, itype=dtype, otype=dtype, stream=self.stream)
+        
+        fft.fft_inplace(self._data, stream=self.stream)        
+        self.stream.synchronize()   
         
     def move(self):
         
@@ -145,9 +179,24 @@ class propagator(object):
         """Once this function is performed, the device (gpu) memory handle is recycled."""
         
         fft.ifft_inplace(self._data, stream=self.stream)
+#        self.stream.synchronize()
+        
+        sol = self._data.copy_to_host(stream=self.stream)/np.prod(self.phase.shape) 
+        
         self.stream.synchronize()
         
-        return self._data.copy_to_host(stream=self.stream)/np.prod(self.phase.shape)    
+        return sol
+    
+    def _get(self):
+        
+        fft.ifft_inplace(self._data, stream=self.stream)
+#        self.stream.synchronize()
+        
+        self._division[self.gridim, self.threadim, self.stream](self._data)
+        
+        self.stream.synchronize()
+        
+        return self._data
     
 
 def xypropagator(E, x, y, dz, crys, key):
@@ -171,21 +220,22 @@ def xypropagator(E, x, y, dz, crys, key):
     
     stream = cuda.stream()
     
-    fft.FFTPlan(shape=E.shape, itype=E.dtype, otype=E.dtype, stream=stream)  
+#    fft.FFTPlan(shape=E.shape, itype=E.dtype, otype=E.dtype, stream=stream)  
 
     dE = cuda.to_device(E, stream=stream)
     dP = cuda.to_device(P, stream=stream)
     
     fft.fft_inplace(dE, stream=stream)
-    stream.synchronize()
+#    stream.synchronize()
     
     multiple2[gridim, threadim, stream](dE, dP)
-    stream.synchronize()
+#    stream.synchronize()
     
     fft.ifft_inplace(dE, stream=stream)
-    stream.synchronize()
+#    stream.synchronize()
     
     sol = dE.copy_to_host(stream=stream)/np.prod(E.shape)
+    stream.synchronize()
     
     return sol
 
@@ -212,21 +262,22 @@ def xytpropagator(E, x, y, t, dz, crys, key):
     
     stream = cuda.stream()
     
-    fft.FFTPlan(shape=E.shape, itype=E.dtype, otype=E.dtype, stream=stream)   
+#    fft.FFTPlan(shape=E.shape, itype=E.dtype, otype=E.dtype, stream=stream)   
 
     dE = cuda.to_device(E, stream=stream)
     dP = cuda.to_device(P, stream=stream)
     
     fft.fft_inplace(dE, stream=stream)
-    stream.synchronize()
+#    stream.synchronize()
     
     multiple3[gridim, threadim, stream](dE, dP)
-    stream.synchronize()
+#    stream.synchronize()
     
     fft.ifft_inplace(dE, stream=stream)
-    stream.synchronize()
+#    stream.synchronize()
     
     sol = dE.copy_to_host(stream=stream)/np.prod(E.shape)
+    stream.synchronize()
     
     return sol
         
