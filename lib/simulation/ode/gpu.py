@@ -14,7 +14,7 @@ class ode(object):
     """The current structure is time-invariant. 
     If the ode is affected by the initial state (x0), the current structure won't work."""
 
-    def __init__(self, x0, x1, gf, fsize, arg, hstart=10, nmax=10000, eps=1e-8, hmin=None, TPB=(16, 16)):
+    def __init__(self, x0, x1, gf, fsize, arg, hstart=10, nmax=10000, eps=1e-8, hmin=None, threadim=(16, 16)):
         #VERY HIGH OVERHEAD
         self.x0 = x0
         self.xq = x1
@@ -23,8 +23,8 @@ class ode(object):
         self.hstart = hstart              
         self.nmax = nmax
         self.eps = eps
-        self.threadim = TPB
         self.fsize = fsize
+        self.threadim = (16, 16)
     
         if hmin is None:
             hmin = (x1-x0)/1e7
@@ -170,7 +170,7 @@ class ode(object):
             
         self._f = godeint
     
-    def load(self, init, stream=None):
+    def move(self, init, stream=None):
 
         BPG = np.array(init[0].shape)/np.array(self.threadim)
         
@@ -178,30 +178,20 @@ class ode(object):
         
         if stream is None:
             self.stream = cuda.stream()
+        else:    
+            self.stream = stream
+            
+        if not cuda.devicearray.is_cuda_ndarray(init[0]):
+            self.dA = cuda.to_device(init[0], stream=self.stream)
+            self.dB = cuda.to_device(init[1], stream=self.stream)
+            self.dC = cuda.to_device(init[2], stream=self.stream)
+            self.stream.synchronize()            
         else:
             self.stream = stream
-
-        self.dA = cuda.to_device(init[0], stream=self.stream)
-        self.dB = cuda.to_device(init[1], stream=self.stream)
-        self.dC = cuda.to_device(init[2], stream=self.stream)
-        
-        self.stream.synchronize()
-        
-    def _load(self, init, stream, threadim=(16, 16)):
-        
-        self.threadim = threadim 
-        
-        BPG = np.array(init[0].shape)/np.array(self.threadim)
-        
-        self.gridim = tuple(BPG.astype(np.int)) 
-        
-        self.stream = stream
-
-        self.dA = init[0]
-        self.dB = init[1]
-        self.dC = init[2]
-                        
-    def move(self):
+            self.dA = init[0]
+            self.dB = init[1]
+            self.dC = init[2]
+            self.stream.synchronize()
         
         self._f[self.gridim, self.threadim, self.stream](self.dA, self.dB, self.dC)  
         
@@ -209,9 +199,9 @@ class ode(object):
         
     def get(self):
     
-        sol = (self.dA.copy_to_host(stream=self.stream),
+        sol = [self.dA.copy_to_host(stream=self.stream),
                self.dB.copy_to_host(stream=self.stream),
-               self.dC.copy_to_host(stream=self.stream))
+               self.dC.copy_to_host(stream=self.stream)]
         
         self.stream.synchronize()
         
@@ -219,7 +209,7 @@ class ode(object):
     
     def _get(self):
         
-        sol = (self.dA, self.dB, self.dC)
+        sol = [self.dA, self.dB, self.dC]
         
         return sol
     
@@ -277,9 +267,7 @@ if __name__ == "__main__":
 
     start = timer()
     
-    test.load([A, B, C])
-    
-    test.move()
+    test.move([A, B, C])
     
     image(test.get()[2])
     

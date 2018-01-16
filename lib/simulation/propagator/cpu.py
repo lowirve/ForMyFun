@@ -71,7 +71,7 @@ def phase(kx, ky, para, key, dw=None):
         else:
             return ky*para['ky']+kx*ky*para['kxky']+kx**2/2/kc*para['kx2']+ky**2/2/kc*para['ky2']#+kc#full phase
  
-class propagator(object):    
+class propagator(object):   
     
     def __init__(self, crys, coord, key):
         self.para = kpara(crys, key)
@@ -83,18 +83,21 @@ class propagator(object):
         elif type(coord) == xyt: #xy is the superclass of xyt. So isinstance(xyt(), xy) returns true. Type(), on the other hand, returns false.
             self.phase = phase(coord.kxxx, coord.kyyy, self.para, key, coord.www)
             
-    def load(self, init, dz):
-        if self.phase.shape != init.shape:
-            raise ValueError("Input doesn't match.")
-        
-        self.kdata = np.fft.fftn(init)
+    def load(self, dz, stream=None): #The extra useless parameter, 'stream', is to make the class compatible with gpu version in the applications.            
         self._move = np.exp(1j*self.phase*dz)
         
-    def move(self):
-        self.kdata = self.kdata*self._move
+    def propagate(self, init):                     
+        if self.phase.shape != init.shape:
+            raise ValueError("Input doesn't match.")
+            
+        self._data = np.fft.fftn(init)
+        self._data = self._data*self._move
         
     def get(self):
-        return np.fft.ifftn(self.kdata)
+        return np.fft.ifftn(self._data)
+    
+    def _get(self): #The extra useless function is to make the class compatible with gpu version in the applications.
+        return self.get()
         
 
 def xypropagator(E, x, y, dz, crys, key):
@@ -149,7 +152,7 @@ if __name__ == '__main__':
     wt = 30 # 30ps
     dz = 500 # 500um
     
-    xsize = 256
+    xsize = 128
     ysize = 128
     tsize = 64
         
@@ -181,8 +184,8 @@ if __name__ == '__main__':
     
     sol = propagator(crys, space1, key)
     
-    sol.load(E, dz)
-    sol.move()
+    sol.load(dz)
+    sol.propagate(E)
  
     sol2 = sol.get()
     
@@ -217,8 +220,8 @@ if __name__ == '__main__':
     
     sol = propagator(crys, space2, key)
     
-    sol.load(E, dz)
-    sol.move()
+    sol.load(dz)
+    sol.propagate(E)
  
     sol4 = sol.get()
     

@@ -89,6 +89,8 @@ def multiple3(A, B):
  
     
 class propagator(object):    
+
+    _streamsource = 'internal'
     
     def __init__(self, crys, coord, key):
         self.para = kpara(crys, key)
@@ -133,39 +135,37 @@ class propagator(object):
             
         self._division = division
             
-    def load(self, init, dz, stream=None):
+    def load(self, dz, stream=None):   
+        """load dz and stream. Hence once either dz or stream needs to be updated, run this function.
+           if stream is not assigned here, input in propagate must be np.array and cannot be a devicearrya."""
+        self._phase = 1j*dz*self.phase
         
         if stream is None:
-            self.stream = cuda.stream()
+            self.stream = cuda.stream() 
         else:
-            self.stream = stream        
+            self.stream = stream
+            self._streamsource = 'external'
+        
+        self._move = cuda.to_device(self._phase, stream=self.stream)
+        
+    def propagate(self, init):
         
         if self.phase.shape != init.shape:
-            raise ValueError("Input doesn't match.")
+            raise ValueError("Input doesn't match.")      
+            
+        if cuda.devicearray.is_cuda_ndarray(init): 
+            if self._streamsource == 'internal':
+                raise ValueError("Input cannot be a devicearray.") 
+            self._data = init             
+        else:            
+            self._data = cuda.to_device(init, stream=self.stream)
+                       
+            
+#        fft.FFTPlan(shape=self.phase.shape, itype=init.dtype, otype=init.dtype, stream=self.stream)            
         
-        self._move = cuda.to_device(1j*dz*self.phase, stream=self.stream)
-        
-        self._data = cuda.to_device(init, stream=self.stream)
-        
-#        fft.FFTPlan(shape=self.phase.shape, itype=init.dtype, otype=init.dtype, stream=self.stream)
-        
-        fft.fft_inplace(self._data, stream=self.stream)        
-        self.stream.synchronize()      
-    
-    def _load(self, cuda_init, dz, stream, dtype=np.complex128):        
-        
-        self._move = cuda.to_device(1j*dz*self.phase, stream=self.stream)
-        
-        self._data = cuda_init
-        
-        self.stream = stream
-        
-#        fft.FFTPlan(shape=self.phase.shape, itype=dtype, otype=dtype, stream=self.stream)
-        
-        fft.fft_inplace(self._data, stream=self.stream)        
-        self.stream.synchronize()   
-        
-    def move(self):
+        fft.fft_inplace(self._data, stream=self.stream)         
+
+        self.stream.synchronize()             
         
         if len(self.phase.shape) == 2:
             multiple2[self.gridim, self.threadim, self.stream](self._data, self._move)
@@ -296,9 +296,9 @@ if __name__ == '__main__':
     wt = 30 # 30ps
     dz = 500 # 500um
     
-    xsize = 512
-    ysize = 512
-    tsize = 256
+    xsize = 128
+    ysize = 128
+    tsize = 64
         
     crys = crystal(lbo3, wl*1e3, 25, 90, 45)
     crys.show()
@@ -329,8 +329,8 @@ if __name__ == '__main__':
 
     sol = propagator(crys, space1, key)
     
-    sol.load(E, dz)
-    sol.move()
+    sol.load(dz)
+    sol.propagate(E)
     
     sol2 = sol.get()
     
@@ -364,8 +364,8 @@ if __name__ == '__main__':
     
     sol = propagator(crys, space2, key)
     
-    sol.load(E, dz)
-    sol.move()
+    sol.load(dz)
+    sol.propagate(E)
  
     sol4 = sol.get()
     

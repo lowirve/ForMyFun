@@ -66,8 +66,8 @@ def comparison(xsize, ysize, tsize):
     
     sol = cpu.propagator(crys, space2, key)
     
-    sol.load(E, dz)
-    sol.move()
+    sol.load(dz)
+    sol.move(E)
  
     sol3 = sol.get()
 
@@ -79,8 +79,8 @@ def comparison(xsize, ysize, tsize):
     
     sol = gpu.propagator(crys, space2, key)
     
-    sol.load(E, dz)
-    sol.move()
+    sol.load(dz)
+    sol.move(E)
  
     sol4 = sol.get()
 
