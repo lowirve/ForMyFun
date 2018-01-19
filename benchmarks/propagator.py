@@ -40,7 +40,7 @@ def comparison(xsize, ysize, tsize):
     
     space2 = xyt(x, y, t)
     
-    E = Gau(w0, space2.xxx, space2.yyy, wt, space2.ttt)
+    E = 100*Gau(w0, space2.xxx, space2.yyy, wt, space2.ttt)
     E = E.astype(np.complex128)
 
     start = timer()
@@ -67,7 +67,7 @@ def comparison(xsize, ysize, tsize):
     sol = cpu.propagator(crys, space2, key)
     
     sol.load(dz)
-    sol.move(E)
+    sol.propagate(E)
  
     sol3 = sol.get()
 
@@ -80,7 +80,7 @@ def comparison(xsize, ysize, tsize):
     sol = gpu.propagator(crys, space2, key)
     
     sol.load(dz)
-    sol.move(E)
+    sol.propagate(E)
  
     sol4 = sol.get()
 

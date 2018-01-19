@@ -47,33 +47,26 @@ def kpara(crystal, key):
     gvdlo = crystal.gvdhl[1]
     
     if key == 'hi':
-        return {'kx':np.tan(rhi), 'kxky':np.tan(rhi)*np.tan(rlo)*(nhi**2/(nhi**2-nlo**2)),
+        return {'kx':np.tan(rhi), 'ky': 0, 'kxky':np.tan(rhi)*np.tan(rlo)*(nhi**2/(nhi**2-nlo**2)),
               'ky2':-(1-(nlo**2/(nhi**2-nlo**2))*np.tan(rhi)**2), 
               'kx2':-(-(nhi**2/(nhi**2-nlo**2))*np.tan(rlo)**2+np.tan(rhi)**2+nhi**4*nlo**2/(nx*ny*nz)**2),
               'dw':gihi/c, 'dw2': gvdhi/2e9, 'kc': k(crystal.wl/1e3, crystal.nhl[0])}    
     else:
-        return {'ky':np.tan(rlo), 'kxky':-np.tan(rhi)*np.tan(rlo)*(nlo**2/(nhi**2-nlo**2)),
+        return {'kx': 0, 'ky':np.tan(rlo), 'kxky':-np.tan(rhi)*np.tan(rlo)*(nlo**2/(nhi**2-nlo**2)),
               'kx2':-(1-(-nhi**2/(nhi**2-nlo**2))*np.tan(rlo)**2), 
               'ky2':-(-(-nlo**2/(nhi**2-nlo**2))*np.tan(rhi)**2+np.tan(rlo)**2+nhi**2*nlo**4/(nx*ny*nz)**2),
               'dw':gilo/c, 'dw2': gvdlo/2e9, 'kc': k(crystal.wl/1e3, crystal.nhl[1])} 
         
         
-def phase(kx, ky, para, key, dw=None):
-    if not (key in ('lo', 'hi')):
-        raise ValueError("key must be either 'hi' or 'lo'.") 
+def phase(kx, ky, para, dw=None, ref=0):
         
     kc = para['kc']
     
     if dw is not None:
-        if key == 'hi':    
-            return kx*para['kx']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']+dw*para['dw']+dw**2*para['dw2']
-        else:
-            return ky*para['ky']+kx*ky*para['kxky']+kx**2/2/kc*para['kx2']+ky**2/2/kc*para['ky2']+dw*para['dw']+dw**2*para['dw2']
+        return kx*para['kx']+ky*para['ky']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']+dw*(para['dw']-ref)+dw**2*para['dw2']
     else:
-        if key == 'hi':    
-            return kx*para['kx']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']#+kc#full phase
-        else:
-            return ky*para['ky']+kx*ky*para['kxky']+kx**2/2/kc*para['kx2']+ky**2/2/kc*para['ky2']#+kc#full phase
+        return kx*para['kx']+ky*para['ky']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']#+kc#full phase
+
         
 @cuda.jit#('void(complex128[:,:], complex128[:,:])')
 def multiple2(A, B):
@@ -91,13 +84,15 @@ def multiple3(A, B):
 class propagator(object):    
 
     _streamsource = 'internal'
+    _solcalculated = False
     
-    def __init__(self, crys, coord, key):
+    def __init__(self, crys, coord, key, ref=None):
         self.para = kpara(crys, key)
         self.key = key
+        self.coord = coord
         
         if type(coord) == xy:
-            self.phase = phase(coord.kxx, coord.kyy, self.para, key)
+            self.phase = phase(coord.kxx, coord.kyy, self.para)
             
             nnn = np.prod(self.phase.shape) 
             
@@ -113,10 +108,15 @@ class propagator(object):
                 i, j = cuda.grid(2)
                 if i < A.shape[0] and j < A.shape[1]:
                     A[i,j] /= nnn 
+                    
+            self._multiple =multiple2 
             
         
         elif type(coord) == xyt: #xy is the superclass of xyt. So isinstance(xyt(), xy) returns true. Type(), on the other hand, returns false.
-            self.phase = phase(coord.kxxx, coord.kyyy, self.para, key, coord.www)
+            self.phase = phase(coord.kxxx, coord.kyyy, self.para, coord.www)
+            
+            if ref:
+                self.load_ref(ref)
             
             nnn = np.prod(self.phase.shape)
                     
@@ -132,12 +132,18 @@ class propagator(object):
                 i, j, k = cuda.grid(3)
                 if i < A.shape[0] and j < A.shape[1] and k < A.shape[2]:
                     A[i,j,k] /= nnn
+                    
+            self._multiple =multiple3
             
         self._division = division
+        
+    def load_ref(self, ref):
+        self.phase -= self.coord.www*ref
             
     def load(self, dz, stream=None):   
         """load dz and stream. Hence once either dz or stream needs to be updated, run this function.
            if stream is not assigned here, input in propagate must be np.array and cannot be a devicearrya."""
+           
         self._phase = 1j*dz*self.phase
         
         if stream is None:
@@ -149,6 +155,8 @@ class propagator(object):
         self._move = cuda.to_device(self._phase, stream=self.stream)
         
     def propagate(self, init):
+        #If no stream is assigned in self.load() function, it should not be allowed to assign devicearray in here!
+        #If a stream is assigned in self.load() function, it better guarantee that the devicearray given here shares the same stream. 
         
         if self.phase.shape != init.shape:
             raise ValueError("Input doesn't match.")      
@@ -158,36 +166,39 @@ class propagator(object):
                 raise ValueError("Input cannot be a devicearray.") 
             self._data = init             
         else:            
-            self._data = cuda.to_device(init, stream=self.stream)
-                       
+            self._data = cuda.to_device(init, stream=self.stream)                      
             
 #        fft.FFTPlan(shape=self.phase.shape, itype=init.dtype, otype=init.dtype, stream=self.stream)            
         
         fft.fft_inplace(self._data, stream=self.stream)         
 
-        self.stream.synchronize()             
+        self.stream.synchronize()                   
+
+        self._multiple[self.gridim, self.threadim, self.stream](self._data, self._move)
         
-        if len(self.phase.shape) == 2:
-            multiple2[self.gridim, self.threadim, self.stream](self._data, self._move)
-            self.stream.synchronize()
-            
-        elif len(self.phase.shape) == 3:
-            multiple3[self.gridim, self.threadim, self.stream](self._data, self._move)
-            self.stream.synchronize()        
+        self.stream.synchronize()
+        
+        self._solcalculated = False
         
     def get(self):
         """Once this function is performed, the device (gpu) memory handle is recycled."""
         
-        fft.ifft_inplace(self._data, stream=self.stream)
-#        self.stream.synchronize()
-        
-        sol = self._data.copy_to_host(stream=self.stream)/np.prod(self.phase.shape) 
-        
-        self.stream.synchronize()
-        
-        return sol
+        if not self._solcalculated:
+            fft.ifft_inplace(self._data, stream=self.stream)
+    #        self.stream.synchronize()
+            
+            self.sol = self._data.copy_to_host(stream=self.stream)/np.prod(self.phase.shape) 
+            
+            self.stream.synchronize()
+            
+            self._solcalculated = True
+                   
+        return self.sol
     
     def _get(self):
+        #Performing this function gives other external functions access to change the devicearray, and hence
+        #subsequently running self.get() function may not have the correct answer anymore. Avoid running self.get() 
+        #after self._get().
         
         fft.ifft_inplace(self._data, stream=self.stream)
 #        self.stream.synchronize()
@@ -207,7 +218,7 @@ def xypropagator(E, x, y, dz, crys, key):
     kxx, kyy = np.meshgrid(kx, ky, indexing='ij') #xx, yy in k space
     
     para = kpara(crys, key)
-    kphase = phase(kxx, kyy, para, key)
+    kphase = phase(kxx, kyy, para)
     
     P = 1j*dz*kphase
     
@@ -239,7 +250,7 @@ def xypropagator(E, x, y, dz, crys, key):
     
     return sol
 
-def xytpropagator(E, x, y, t, dz, crys, key):
+def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     
     kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])) # k in x
     ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])) # k in y
@@ -248,8 +259,11 @@ def xytpropagator(E, x, y, t, dz, crys, key):
     kxx, kyy, dww = np.meshgrid(kx, ky, dw, indexing='ij')
     
     para = kpara(crys, key)
-
-    kphase = phase(kxx, kyy, para, key, dww) #most time-consuming step
+    
+    if ref:
+        kphase = phase(kxx, kyy, para, dww, para['dw']) #most time-consuming step
+    else:
+        kphase = phase(kxx, kyy, para, dww)
     
     P = 1j*dz*kphase
     
@@ -294,19 +308,20 @@ if __name__ == '__main__':
     wl = 1.064 #1.064 um
     w0 = 500 # 500um
     wt = 30 # 30ps
-    dz = 500 # 500um
+    dz = 50000 # 500um
     
     xsize = 128
     ysize = 128
     tsize = 64
+    size = 3
         
     crys = crystal(lbo3, wl*1e3, 25, 90, 45)
     crys.show()
         
     key = 'hi'
     
-    x = np.linspace(-256*1, 256*1, xsize)
-    y = np.linspace(-256*1, 256*1, ysize)
+    x = np.linspace(-256*size, 256*size, xsize)
+    y = np.linspace(-256*size, 256*size, ysize)
     
     xx, yy = np.meshgrid(x, y)
     
@@ -339,18 +354,20 @@ if __name__ == '__main__':
     
     print(np.allclose(sol1, sol2)) 
    
-    x = np.linspace(-256*1, 256*1, xsize)
-    y = np.linspace(-256*1, 256*1, ysize)
+    x = np.linspace(-256*size, 256*size, xsize)
+    y = np.linspace(-256*size, 256*size, ysize)
     t = np.linspace(-64*1, 63*1, tsize)
     
     xx, yy, tt = np.meshgrid(x, y, t)
 
     E = Gau(w0, xx, yy, wt, tt)
     E = E.astype(np.complex64)
+    
+    ref = True
 
     start = timer()
     
-    sol3 = xytpropagator(E, x, y, t, dz, crys, key)
+    sol3 = xytpropagator(E, x, y, t, dz, crys, key, ref)
 
     end = timer()
     print(end - start) 
@@ -363,6 +380,7 @@ if __name__ == '__main__':
     start = timer()
     
     sol = propagator(crys, space2, key)
+    sol.load_ref(sol.para['dw'])
     
     sol.load(dz)
     sol.propagate(E)
