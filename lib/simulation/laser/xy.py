@@ -13,4 +13,4 @@ def normgau(x, y, wx, wy=None):
     if wy is None:
         wy = wx
         
-    return np.exp(-(x**2)/2/wx)*np.exp(-(y**2)/2/wy)
+    return np.exp(-(x**2)/2/wx)*np.exp(-(y**2)/2/wy)+0j

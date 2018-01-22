@@ -7,8 +7,8 @@ from __future__ import division, print_function
 
 import sys
 
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+#sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
+sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
 from numba import cuda
 import numpy as np
@@ -62,7 +62,7 @@ def evolution(space, crystals, keys, lasers, args, gf, z, step):
     red2.load(h, stream)
     blue.load(h, stream)
         
-    for i in range(int(z//h)-1):
+    for i in range(step-1):
         temp = test._get()
         
         red1.propagate(temp[0])
@@ -85,6 +85,7 @@ def evolution(space, crystals, keys, lasers, args, gf, z, step):
     time = end-start
     print (time)
     
+#    print(red1.get().dtype)
 #    image(E[:,:,tsize//2])  
 #    
 #    image(red1.get()[:,:,tsize//2])
@@ -132,19 +133,19 @@ if __name__ == '__main__':
             args = np.append(para(wls, deff, ns), 0) # 4 element array
             args = tuple(args)
             
-            x = np.linspace(-128*dxy, 127*dxy, xsize)
-            y = np.linspace(-128*dxy, 127*dxy, ysize)
-            t = np.linspace(-64*dt, 63*dt, tsize)
+            x = np.linspace(-128*dxy, 127*dxy, xsize, dtype=np.float32)
+            y = np.linspace(-128*dxy, 127*dxy, ysize, dtype=np.float32)
+            t = np.linspace(-64*dt, 63*dt, tsize, dtype=np.float32)
             
             space = xyt(x, y, t)
             
             E = 100*normgau(space.ttt, space.xxx, space.yyy, wt, w0)
             
-            E = E.astype(np.complex128)  
+#            E = E.astype(np.complex64)  
             
             A = E.copy()
             B = E.copy()
-            C = np.zeros_like(E,dtype=np.complex128)
+            C = np.zeros_like(E)
             
             keys = ['hi', 'hi', 'lo']
             

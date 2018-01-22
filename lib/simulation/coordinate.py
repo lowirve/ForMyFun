@@ -43,9 +43,9 @@ if __name__ == '__main__':
     ysize = 256
     tsize = 128      
         
-    x = np.linspace(-256*1, 256*1, xsize)
-    y = np.linspace(-256*1, 256*1, ysize)
-    t = np.linspace(-64*1, 63*1, tsize)
+    x = np.linspace(-256*1, 256*1, xsize, dtype=np.float32)
+    y = np.linspace(-256*1, 256*1, ysize, dtype=np.float32)
+    t = np.linspace(-64*1, 63*1, tsize, dtype=np.float32)
     
     test1 = xy(x, y)
     test2 = xyt(x, y, t)

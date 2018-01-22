@@ -94,7 +94,7 @@ class propagator(object):
         if type(coord) == xy:
             self.phase = phase(coord.kxx, coord.kyy, self.para)
             
-            nnn = np.prod(self.phase.shape) 
+            nnn = np.prod(self.phase.shape, dtype=self.phase.dtype) 
             
             TPB = np.array([16, 16])
             BPG = np.array(self.phase.shape)/TPB
@@ -114,13 +114,13 @@ class propagator(object):
         
         elif type(coord) == xyt: #xy is the superclass of xyt. So isinstance(xyt(), xy) returns true. Type(), on the other hand, returns false.
             self.phase = phase(coord.kxxx, coord.kyyy, self.para, coord.www)
-            
+                     
             if ref:
                 self.load_ref(ref)
             
             nnn = np.prod(self.phase.shape)
                     
-            TPB = np.array([16, 16, 4])
+            TPB = np.array([8, 8, 4])
             BPG = np.array(self.phase.shape)/TPB
             BPG = BPG.astype(np.int)
             
@@ -169,13 +169,13 @@ class propagator(object):
             self._data = cuda.to_device(init, stream=self.stream)                      
             
 #        fft.FFTPlan(shape=self.phase.shape, itype=init.dtype, otype=init.dtype, stream=self.stream)            
-        
+
         fft.fft_inplace(self._data, stream=self.stream)         
 
         self.stream.synchronize()                   
 
         self._multiple[self.gridim, self.threadim, self.stream](self._data, self._move)
-        
+
         self.stream.synchronize()
         
         self._solcalculated = False
@@ -186,9 +186,9 @@ class propagator(object):
         if not self._solcalculated:
             fft.ifft_inplace(self._data, stream=self.stream)
     #        self.stream.synchronize()
-            
-            self.sol = self._data.copy_to_host(stream=self.stream)/np.prod(self.phase.shape) 
-            
+    
+            self.sol = self._data.copy_to_host(stream=self.stream)/np.prod(self.phase.shape, dtype=self.phase.dtype) 
+
             self.stream.synchronize()
             
             self._solcalculated = True
@@ -245,7 +245,7 @@ def xypropagator(E, x, y, dz, crys, key):
     fft.ifft_inplace(dE, stream=stream)
 #    stream.synchronize()
     
-    sol = dE.copy_to_host(stream=stream)/np.prod(E.shape)
+    sol = dE.copy_to_host(stream=stream)/np.prod(E.shape, dtype=kphase.dtype)
     stream.synchronize()
     
     return sol
@@ -290,7 +290,7 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     fft.ifft_inplace(dE, stream=stream)
 #    stream.synchronize()
     
-    sol = dE.copy_to_host(stream=stream)/np.prod(E.shape)
+    sol = dE.copy_to_host(stream=stream)/np.prod(E.shape, dtype=kphase.dtype)
     stream.synchronize()
     
     return sol
@@ -320,8 +320,8 @@ if __name__ == '__main__':
         
     key = 'hi'
     
-    x = np.linspace(-256*size, 256*size, xsize)
-    y = np.linspace(-256*size, 256*size, ysize)
+    x = np.linspace(-256*size, 256*size, xsize, dtype=np.float32)
+    y = np.linspace(-256*size, 256*size, ysize, dtype=np.float32)
     
     xx, yy = np.meshgrid(x, y)
     
@@ -354,9 +354,7 @@ if __name__ == '__main__':
     
     print(np.allclose(sol1, sol2)) 
    
-    x = np.linspace(-256*size, 256*size, xsize)
-    y = np.linspace(-256*size, 256*size, ysize)
-    t = np.linspace(-64*1, 63*1, tsize)
+    t = np.linspace(-64*1, 63*1, tsize, dtype=np.float32)
     
     xx, yy, tt = np.meshgrid(x, y, t)
 
