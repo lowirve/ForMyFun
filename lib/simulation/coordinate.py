@@ -18,8 +18,8 @@ class xy(object):
         self.x = x
         self.y = y
         
-        self.kx = 2*np.pi*fft.fftfreq(self.xsize, d = self.dx)#Beware that the fft space is swapped.
-        self.ky = 2*np.pi*fft.fftfreq(self.ysize, d = self.dy)#Beware that the fft space is swapped.
+        self.kx = 2*np.pi*fft.fftfreq(self.xsize, d = self.dx).astype(self.x.dtype)#Beware that the fft space is swapped.
+        self.ky = 2*np.pi*fft.fftfreq(self.ysize, d = self.dy).astype(self.y.dtype)#Beware that the fft space is swapped.
         
         self.xx, self.yy = np.meshgrid(self.x, self.y, indexing = 'ij')
         self.kxx, self.kyy = np.meshgrid(self.kx, self.ky, indexing = 'ij')#Beware that the fft space is swapped.
@@ -33,7 +33,7 @@ class xyt(xy):
         self.t = t
         self.dt = t[1] - t[0]
         
-        self.w = 2*np.pi*fft.fftfreq(self.tsize, d = self.dt)#Beware that the fft space is swapped.
+        self.w = 2*np.pi*fft.fftfreq(self.tsize, d = self.dt).astype(self.t.dtype)#Beware that the fft space is swapped.
         
         self.xxx, self.yyy, self.ttt = np.meshgrid(self.x, self.y, self.t, indexing = 'ij')
         self.kxxx, self.kyyy, self.www = np.meshgrid(self.kx, self.ky, self.w, indexing = 'ij')#Beware that the fft space is swapped.

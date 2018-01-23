@@ -7,8 +7,8 @@ from __future__ import division, print_function
 
 import sys
 
-#sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
+#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
 from numba import cuda
 import numpy as np
@@ -99,11 +99,13 @@ def evolution(space, crystals, keys, lasers, args, gf, z, step):
     
 if __name__ == '__main__':
 
-    sizes = [(32,32,32), (64,32,32), (64,64,32), (64,64,64), (128, 128, 64), (128, 128, 128), (256, 256, 128)] 
+    sizes = [(32,32,32), (64,64,64), (128, 128, 64), (128, 128, 128)]# , (256, 256, 128)] 
     
     times = []
     
-    steps = [10, 50, 100, 200, 1000]
+    steps = [10, 50, 100, 200]#, 1000]
+    
+    dtype = np.float64
     
     for i, step in enumerate(steps):
         
@@ -133,19 +135,23 @@ if __name__ == '__main__':
             args = np.append(para(wls, deff, ns), 0) # 4 element array
             args = tuple(args)
             
-            x = np.linspace(-128*dxy, 127*dxy, xsize, dtype=np.float32)
-            y = np.linspace(-128*dxy, 127*dxy, ysize, dtype=np.float32)
-            t = np.linspace(-64*dt, 63*dt, tsize, dtype=np.float32)
+            x = np.linspace(-128*dxy, 127*dxy, xsize, dtype=dtype)
+            y = np.linspace(-128*dxy, 127*dxy, ysize, dtype=dtype)
+            t = np.linspace(-64*dt, 63*dt, tsize, dtype=dtype)
             
             space = xyt(x, y, t)
             
             E = 100*normgau(space.ttt, space.xxx, space.yyy, wt, w0)
+            
+            print(E.dtype)
             
 #            E = E.astype(np.complex64)  
             
             A = E.copy()
             B = E.copy()
             C = np.zeros_like(E)
+            
+            print(C.dtype)
             
             keys = ['hi', 'hi', 'lo']
             
@@ -176,6 +182,7 @@ if __name__ == '__main__':
     p = np.polyfit(xaxis[:3], times[2][:3], 1)
     
     line2, = ax.plot(xaxis, p[0]*xaxis+p[1], linestyle='-')
+    print(p[1])
 
     ax.set_xscale('log')
     ax.set_yscale('log')

@@ -58,12 +58,12 @@ def kpara(crystal, key):
               'dw':gilo/c, 'dw2': gvdlo/2e9, 'kc': k(crystal.wl/1e3, crystal.nhl[1])} 
         
         
-def phase(kx, ky, para, dw=None, ref=0):
+def phase(kx, ky, para, dw=None):
         
     kc = para['kc']
     
     if dw is not None:
-        return kx*para['kx']+ky*para['ky']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']+dw*(para['dw']-ref)+dw**2*para['dw2']
+        return kx*para['kx']+ky*para['ky']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']+dw*para['dw']+dw**2*para['dw2']
     else:
         return kx*para['kx']+ky*para['ky']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']#+kc#full phase
 
@@ -94,7 +94,7 @@ class propagator(object):
         if type(coord) == xy:
             self.phase = phase(coord.kxx, coord.kyy, self.para)
             
-            nnn = np.prod(self.phase.shape, dtype=self.phase.dtype) 
+            nnn = np.prod(self.phase.shape, dtype=np.int32) 
             
             TPB = np.array([16, 16])
             BPG = np.array(self.phase.shape)/TPB
@@ -103,7 +103,7 @@ class propagator(object):
             self.gridim = tuple(BPG)
             self.threadim = tuple(TPB)
             
-            @cuda.jit#('void(complex128[:,:], complex128[:,:])')
+            @cuda.jit#('void(complex128[:,:])')
             def division(A):
                 i, j = cuda.grid(2)
                 if i < A.shape[0] and j < A.shape[1]:
@@ -118,7 +118,7 @@ class propagator(object):
             if ref:
                 self.load_ref(ref)
             
-            nnn = np.prod(self.phase.shape)
+            nnn = np.prod(self.phase.shape, dtype=np.int32) 
                     
             TPB = np.array([8, 8, 4])
             BPG = np.array(self.phase.shape)/TPB
@@ -127,7 +127,7 @@ class propagator(object):
             self.gridim = tuple(BPG)
             self.threadim = tuple(TPB)
             
-            @cuda.jit#('void(complex128[:,:,:], complex128[:,:,:])')
+            @cuda.jit#('void(complex64[:,:,:])')
             def division(A):
                 i, j, k = cuda.grid(3)
                 if i < A.shape[0] and j < A.shape[1] and k < A.shape[2]:
@@ -184,10 +184,8 @@ class propagator(object):
         """Once this function is performed, the device (gpu) memory handle is recycled."""
         
         if not self._solcalculated:
-            fft.ifft_inplace(self._data, stream=self.stream)
-    #        self.stream.synchronize()
     
-            self.sol = self._data.copy_to_host(stream=self.stream)/np.prod(self.phase.shape, dtype=self.phase.dtype) 
+            self.sol = self._get().copy_to_host(stream=self.stream)
 
             self.stream.synchronize()
             
@@ -212,8 +210,8 @@ class propagator(object):
 
 def xypropagator(E, x, y, dz, crys, key):
         
-    kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])) # k in x
-    ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])) # k in y   
+    kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])).astype(x.dtype) # k in x
+    ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])).astype(y.dtype) # k in y
     
     kxx, kyy = np.meshgrid(kx, ky, indexing='ij') #xx, yy in k space
     
@@ -252,22 +250,22 @@ def xypropagator(E, x, y, dz, crys, key):
 
 def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     
-    kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])) # k in x
-    ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])) # k in y
-    dw = 2*np.pi*np.fft.fftfreq(t.size, d = (t[1]-t[0])) # dw in t
+    kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])).astype(x.dtype) # k in x
+    ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])).astype(y.dtype) # k in y
+    dw = 2*np.pi*np.fft.fftfreq(t.size, d = (t[1]-t[0])).astype(t.dtype) # dw in t
     
     kxx, kyy, dww = np.meshgrid(kx, ky, dw, indexing='ij')
     
     para = kpara(crys, key)
     
     if ref:
-        kphase = phase(kxx, kyy, para, dww, para['dw']) #most time-consuming step
+        kphase = phase(kxx, kyy, para, dww) - dww*para['dw']#most time-consuming step
     else:
         kphase = phase(kxx, kyy, para, dww)
     
     P = 1j*dz*kphase
     
-    TPB = np.array([16, 16, 4])
+    TPB = np.array([8, 8, 4])
     BPG = np.array([x.size, y.size, t.size])/TPB
     BPG = BPG.astype(np.int)
     
@@ -323,10 +321,10 @@ if __name__ == '__main__':
     x = np.linspace(-256*size, 256*size, xsize, dtype=np.float32)
     y = np.linspace(-256*size, 256*size, ysize, dtype=np.float32)
     
-    xx, yy = np.meshgrid(x, y)
+    xx, yy = np.meshgrid(x, y, indexing='ij')
     
     E = Gau(w0, xx, yy) 
-    E = E.astype(np.complex64)
+    E = E.astype(np.complex128)
     
     start = timer()
     
@@ -338,7 +336,7 @@ if __name__ == '__main__':
     space1 = xy(x, y)
     
     E = Gau(w0, space1.xx, space1.yy)
-    E = E.astype(np.complex64)
+    E = E.astype(np.complex128)
     
     start = timer()
 
@@ -356,10 +354,10 @@ if __name__ == '__main__':
    
     t = np.linspace(-64*1, 63*1, tsize, dtype=np.float32)
     
-    xx, yy, tt = np.meshgrid(x, y, t)
+    xx, yy, tt = np.meshgrid(x, y, t, indexing='ij')
 
     E = Gau(w0, xx, yy, wt, tt)
-    E = E.astype(np.complex64)
+    E = E.astype(np.complex128)
     
     ref = True
 
@@ -373,7 +371,7 @@ if __name__ == '__main__':
     space2 = xyt(x, y, t)
     
     E = Gau(w0, space2.xxx, space2.yyy, wt, space2.ttt)
-    E = E.astype(np.complex64)
+    E = E.astype(np.complex128)
     
     start = timer()
     
