@@ -15,7 +15,7 @@ import numpy as np
 
 from timeit import default_timer as timer
 from simulation.nonlinear.gpu import sfg  
-from simulation.laser.xyt import normgau
+from simulation.laser.gaussian import normgau
 from simulation.coordinate import xyt, xy
 
 from simulation.crystals import crystal
@@ -98,14 +98,24 @@ def evolution(space, crystals, keys, lasers, args, gf, z, step):
  
     
 if __name__ == '__main__':
+    
+    import matplotlib.pyplot as plt
 
-    sizes = [(32,32,32), (64,64,64), (128, 128, 64), (128, 128, 128)]# , (256, 256, 128)] 
+    sizes = [(32,32,32), (64,64,32), (64,64,64), (128, 128, 64), (128, 128, 128)]#, (256, 256, 128)] 
     
     times = []
     
-    steps = [10, 50, 100, 200]#, 1000]
+    steps = [50, 100, 200]#, 1000]
     
     dtype = np.float64
+    
+    fig, ax = plt.subplots()
+    
+    xaxis = [np.prod(size) for size in sizes]
+    
+    xaxis.insert(0, 0)
+    
+    xaxis = np.array(xaxis)
     
     for i, step in enumerate(steps):
         
@@ -141,7 +151,7 @@ if __name__ == '__main__':
             
             space = xyt(x, y, t)
             
-            E = 100*normgau(space.ttt, space.xxx, space.yyy, wt, w0)
+            E = 100*normgau(t=space.ttt, x=space.xxx, y=space.yyy, wt=wt, wx=w0)
             
             print(E.dtype)
             
@@ -164,25 +174,19 @@ if __name__ == '__main__':
             lasers = A, B, C
             
             temp.append(evolution(space, crystals, keys, lasers, args, sfg, z, step))
+            
+        p = np.polyfit(xaxis[1:], temp, 1)
+    
+        ax.plot(xaxis[1:], temp, linestyle='-', marker='o')
+    
+        ax.plot(xaxis, p[0]*xaxis+p[1], linestyle='-')
         
         times.append(temp)
         print()
         
     times = np.array(times)    
     
-    np.savetxt('data.csv', times, delimiter='\t')
-        
-    import matplotlib.pyplot as plt
-    fig, ax = plt.subplots()
-    
-    xaxis = np.array([np.prod(np.array(size)) for size in sizes])
-    
-    line1, = ax.plot(xaxis, times[2], linestyle='-', marker='o')
-    
-    p = np.polyfit(xaxis[:3], times[2][:3], 1)
-    
-    line2, = ax.plot(xaxis, p[0]*xaxis+p[1], linestyle='-')
-    print(p[1])
+    np.savetxt('data.csv', times, delimiter='\t')        
 
     ax.set_xscale('log')
     ax.set_yscale('log')
