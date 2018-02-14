@@ -9,13 +9,16 @@ from __future__ import division, print_function
 
 import numpy as np
 
-def normgau(x, y, wx, t=None, wt=None, wy=None):
-    if wy is None:
-        wy = wx
+def normgau(**kwargs):
+
+    x = kwargs.pop('x', 0)
+    wx = kwargs.pop('wx', 1)
     
-    if wt is None or t is None:
-        t = 0
-        wt = 1
+    y = kwargs.pop('y', 0)
+    wy = kwargs.pop('wy', wx)
+    
+    t = kwargs.pop('t', 0)
+    wt = kwargs.pop('wt', wx)
         
     return np.exp(-2*(x/wx)**2)*np.exp(-2*(y/wy)**2)*np.exp(-2*(t/wt)**2)+0j    
 
@@ -48,8 +51,8 @@ if __name__ == '__main__':
     a = xy(x, y)
     b = xyt(x, y, t)
     
-    ia = normgau(a.xx, a.yy, w0)
-    ib = normgau(b.xxx, b.yyy, w0, b.ttt, wt)
+    ia = normgau(x=a.xx, y=a.yy, wx=w0)
+    ib = normgau(x=b.xxx, y=b.yyy, wx=w0, t=b.ttt, wt=wt)
     
     
     

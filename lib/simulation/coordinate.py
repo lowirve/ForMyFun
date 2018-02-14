@@ -8,6 +8,7 @@ import numpy as np
 from numpy import fft
 
 class xy(object):   
+    
     def __init__(self, x, y):
         self.xsize = x.size
         self.ysize = y.size
@@ -25,6 +26,7 @@ class xy(object):
         self.kxx, self.kyy = np.meshgrid(self.kx, self.ky, indexing = 'ij')#Beware that the fft space is swapped.
         
 class xyt(xy):
+    
     def __init__(self, x, y, t):
         xy.__init__(self, x, y)
         
@@ -37,10 +39,12 @@ class xyt(xy):
         
         self.xxx, self.yyy, self.ttt = np.meshgrid(self.x, self.y, self.t, indexing = 'ij')
         self.kxxx, self.kyyy, self.www = np.meshgrid(self.kx, self.ky, self.w, indexing = 'ij')#Beware that the fft space is swapped.
+
+        
         
 if __name__ == '__main__':
-    xsize = 256
-    ysize = 256
+    xsize = 128
+    ysize = 128
     tsize = 128      
         
     x = np.linspace(-256*1, 256*1, xsize, dtype=np.float32)

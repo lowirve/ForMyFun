@@ -8,8 +8,11 @@ It needs Sellmeiers equation and tensor d, which is stored in a namedtuple for e
 #reorganize the structure of data ??
 
 """
+from __future__ import division, print_function
+
 import numpy as np
-from data import *
+from data import ntCrys, lbo3
+from scipy.optimize import bisect
 
 
 class crystal(object):
@@ -25,6 +28,9 @@ class crystal(object):
     _phi = 0. # rad
     _delta = 0. # rad
     _material = None # the crystal we are seeking PM
+    _a = 0
+    _b = 0
+    _d = 0
     
     @property
     def material(self): # material data
@@ -98,12 +104,16 @@ class crystal(object):
         return self._wl*1e3
     
     @wl.setter
-    def wl(self, value):
+    def wl(self, value):#unit must be nm
         if value > self._wlrange[0] and value < self._wlrange[1]:
             self._wl = value/1e3
             self.nx, self.ny, self.nz = self.fupdateN(self._wl, self._tt)
         else:
             raise ValueError('Wavelength must be > {0} and < {1}'.format(*self._wlrange))
+            
+    @property
+    def brewster(self):
+        return np.rad2deg(self.fbrewster())
 
     @property # temperature
     def tt(self):
@@ -133,7 +143,7 @@ class crystal(object):
             self.phi = phi
             
     def fupdateN(self, wl, tt): 
-        """This function is to update nx, ny, nz based on wavelength and temperature"""
+        """This function is to calculate nx, ny, nz based on wavelength and temperature"""
         return self._fnx(wl, tt), self._fny(wl, tt), self._fnz(wl, tt)
 
     def foa(self, nx, ny, nz):  
@@ -147,17 +157,17 @@ class crystal(object):
         sinP = np.sin(phi)
         sinT = np.sin(theta)
         
-        a = cosT**2*cosP**2/nx**2+cosT**2*sinP**2/ny**2+sinT**2/nz**2
-        b = 2*cosT*sinP*cosP*(ny**(-2)-nx**(-2))
-        d = sinP**2*nx**(-2)+cosP**2*ny**(-2)
+        self._a = cosT**2*cosP**2/nx**2+cosT**2*sinP**2/ny**2+sinT**2/nz**2
+        self._b = 2*cosT*sinP*cosP*(ny**(-2)-nx**(-2))
+        self._d = sinP**2*nx**(-2)+cosP**2*ny**(-2)
         
 #        calculate delta angle. Not useful now.
 #        self._delta = 0.5*(np.arctan(cosT*np.sin(2*phi)/(
 #                np.tan(self._oa)**(-2)*sinT**2+sinP**2-cosT**2*cosP**2)))
 
 #       Calculate based on the analytical solutions
-        nhi = np.sqrt(2./(a+d-np.sqrt((a-d)**2+b**2)))
-        nlo = np.sqrt(2./(a+d+np.sqrt((a-d)**2+b**2)))
+        nhi = np.sqrt(2./(self._a+self._d-np.sqrt((self._a-self._d)**2+self._b**2)))
+        nlo = np.sqrt(2./(self._a+self._d+np.sqrt((self._a-self._d)**2+self._b**2)))
         
         return np.array((nhi, nlo))
 
@@ -221,6 +231,7 @@ class crystal(object):
         #Be aware that principle axis cut is an exception in this function, since both nhi and nlo will be no in the definition.
         return {'o':None, 'e':None}
     
+    
     def show(self):
         print ("nx, ny, nz: {:.8f} {:.8f} {:.8f}".format(self.nx, self.ny, self.nz))
         print ("nhi, nlo: {:.4f} {:.4f}".format(*self.nhl))
@@ -230,6 +241,22 @@ class crystal(object):
         print ("group index hi, lo: {:.5f} {:.5f}".format(*self.gihl))
         print ("gvd hi, lo: {:.3f} {:.3f}".format(*self.gvdhl))
         print 
+        
+    def fbrewster(self):
+        sol = []
+        
+        _f = lambda x: self.nhl[0]*np.sin(x)-np.sin(np.pi/2-x)
+        
+        sol.append(bisect(_f, 0, np.pi/2))
+        
+        _f = lambda x: self.nhl[1]*np.sin(x)-np.sin(np.pi/2-x)
+        
+        sol.append(bisect(_f, 0, np.pi/2))
+        
+        return np.array(sol)
+        
+        
+        
 
             
 if __name__ == '__main__':     
@@ -250,6 +277,8 @@ if __name__ == '__main__':
 #    lbo.delta = 90
 #    lbo.phi = 11.6   
     lbo.show()
+    
+    print(lbo.brewster)
     
     lbo.tt = 149
     lbo.wl = 1064

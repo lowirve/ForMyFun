@@ -58,14 +58,14 @@ def kpara(crystal, key):
               'dw':gilo/c, 'dw2': gvdlo/2e9, 'kc': k(crystal.wl/1e3, crystal.nhl[1])} 
         
         
-def phase(kx, ky, para, dw=None):
+def phase(para, **kwargs):
         
     kc = para['kc']
+    kx = kwargs.pop('kx', 0)
+    ky = kwargs.pop('ky', 0)
+    dw = kwargs.pop('dw', 0)
     
-    if dw is not None:
-        return kx*para['kx']+ky*para['ky']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']+dw*para['dw']+dw**2*para['dw2']
-    else:
-        return kx*para['kx']+ky*para['ky']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']#+kc#full phase
+    return kx*para['kx']+ky*para['ky']+kx*ky*para['kxky']+ky**2/2/kc*para['ky2']+kx**2/2/kc*para['kx2']+dw*para['dw']+dw**2*para['dw2']
 
         
 @cuda.jit#('void(complex128[:,:], complex128[:,:])')
@@ -92,7 +92,7 @@ class propagator(object):
         self.coord = coord
         
         if type(coord) == xy:
-            self.phase = phase(coord.kxx, coord.kyy, self.para)
+            self.phase = phase(self.para, kx=coord.kxx, ky=coord.kyy)
             
             nnn = np.prod(self.phase.shape, dtype=np.int32) 
             
@@ -113,7 +113,7 @@ class propagator(object):
             
         
         elif type(coord) == xyt: #xy is the superclass of xyt. So isinstance(xyt(), xy) returns true. Type(), on the other hand, returns false.
-            self.phase = phase(coord.kxxx, coord.kyyy, self.para, coord.www)
+            self.phase = phase(self.para, kx=coord.kxxx, ky=coord.kyyy, dw=coord.www)
                      
             if ref:
                 self.load_ref(ref)
@@ -216,7 +216,7 @@ def xypropagator(E, x, y, dz, crys, key):
     kxx, kyy = np.meshgrid(kx, ky, indexing='ij') #xx, yy in k space
     
     para = kpara(crys, key)
-    kphase = phase(kxx, kyy, para)
+    kphase = phase(para, kx=kxx, ky=kyy)
     
     P = 1j*dz*kphase
     
@@ -259,9 +259,9 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     para = kpara(crys, key)
     
     if ref:
-        kphase = phase(kxx, kyy, para, dww) - dww*para['dw']#most time-consuming step
+        kphase = phase(para, kx=kxx, ky=kyy, dw=dww) - dww*para['dw']#most time-consuming step
     else:
-        kphase = phase(kxx, kyy, para, dww)
+        kphase = phase(para, kx=kxx, ky=kyy, dw=dww)
     
     P = 1j*dz*kphase
     
