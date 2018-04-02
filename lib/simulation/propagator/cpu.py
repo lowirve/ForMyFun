@@ -145,10 +145,10 @@ if __name__ == '__main__':
     from simulation.crystals.data import lbo3
     
     def Gau(w0, x, y, wt=None, t=None):
-        return np.exp(-(x**2+y**2)/2/w0) if ((wt is None) or (t is None)) else np.exp(-(x**2+y**2)/2/w0)*np.exp(-t**2/2/wt)
+        return np.exp(-(x**2+y**2)/2/w0**2) if ((wt is None) or (t is None)) else np.exp(-(x**2+y**2)/2/w0**2)*np.exp(-t**2/2/wt**2)
 
     wl = 1.064 #1.064 um
-    w0 = 500 # 500um
+    w0 = 100 # 500um
     wt = 30 # 30ps
     dz = 500 # 500um
     
