@@ -3,11 +3,15 @@
 Phase matching class
 
 @author: XuBo
+
+Introduce a new ubiquitous function to calculate deff
+Introduce a new universal function to calculate phase matching at principle cuts
+
 """
 import numpy as np
 from crystals import crystal
 from data import ntCrys
-from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize_scalar#, bisect
 
     
 
@@ -135,6 +139,8 @@ class phasematch(object):
                     f = lambda x: deltak(crystals, axes, Theta=x, Phi=angles['Phi'])
                 else:
                     f = lambda x: deltak(crystals, axes, Theta=angles['Theta'], Phi=x)
+                    
+#                root = bisect(f,0,90) #not working as it requires the opposite signs on the two endpoints, which is not straightforward.
                 
                 sol = minimize_scalar(f, bounds=(0,90), method='bounded')
                 fsol = f(sol.x)
