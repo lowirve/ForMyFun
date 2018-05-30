@@ -1,21 +1,18 @@
 # -*- coding: utf-8 -*-
 """
-import crystal is not necessary. Maybe rewrite kpara and make it compatible with other data format.
-The same work for phase function or propagator class.
+
 """
 
 from __future__ import division, print_function  
+
+import numpy as np
+
 import sys
 sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
 #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
-import numpy as np
-
-from lib.coordinate import xy, xyt#one solution to solve the mutual import within one package is using
-                                  #relative import, such as "from .coordinate import xy, xyt". The problem
-                                  #is that relative import only works for package. So module file written in
-                                  #this way will run in Spyder individually. The other way is to use absolute
-                                  #import. But in this way, the directory must be added to the intepretor first.
+from simulation.crystals import crystal
+from simulation.coordinate import xy, xyt
 
 c = 2.99792458e2 # unit is (um/ps) 
 
@@ -143,14 +140,9 @@ def xytpropagator(E, x, y, t, dz, crys, key):
 
 if __name__ == '__main__':    
     
-    import sys
-    sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-    #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
-
-    from lib.tools.plot.xy import image
+    from plot.xy import image
     from timeit import default_timer as timer
-    from lib.crystals.data import lbo3
-    from lib.crystals.crystals import crystal
+    from simulation.crystals.data import lbo3
     
     def Gau(w0, x, y, wt=None, t=None):
         return np.exp(-(x**2+y**2)/2/w0**2) if ((wt is None) or (t is None)) else np.exp(-(x**2+y**2)/2/w0**2)*np.exp(-t**2/2/wt**2)

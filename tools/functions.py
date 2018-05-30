@@ -30,7 +30,7 @@ if __name__ == '__main__':
     sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
     #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
     
-    from coordinate import xyt, xy
+    from simulation.coordinate import xyt, xy
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
     
@@ -52,8 +52,10 @@ if __name__ == '__main__':
     b = xyt(x, y, t)
     
     ia = normgau(x=a.xx, y=a.yy, wx=w0)
-    ib = normgau(x=b.xxx, y=b.yyy, wx=w0, t=b.ttt, wt=wt) 
-        
+    ib = normgau(x=b.xxx, y=b.yyy, wx=w0, t=b.ttt, wt=wt)
+    
+    
+    
     print('numerical result: {}'.format(np.sum(abs(ia)*a.dx*a.dy)))
     print('analytical result: {}'.format(np.pi/2*w0**2))    
     
@@ -61,7 +63,8 @@ if __name__ == '__main__':
     
     print('numerical result: {}'.format(np.sum(abs(ib)*b.dx*b.dy*b.dt)))
     print('analytical result: {}'.format((np.pi/2)**1.5*w0**2*wt)) 
-       
+    
+    
     fig, (ax1, ax2) = plt.subplots(1,2,subplot_kw={'projection': '3d'})
     
 #    ax1.pcolor(np.abs(ia))

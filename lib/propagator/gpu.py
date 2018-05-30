@@ -14,8 +14,8 @@ import sys
 sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
 #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
-from lib.crystals import crystal
-from lib.coordinate import xy, xyt
+from simulation.crystals import crystal
+from simulation.coordinate import xy, xyt
 
 
 c = 2.99792458e2 # unit is (um/ps) 
@@ -298,7 +298,7 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
 if __name__ == '__main__':    
     
     from timeit import default_timer as timer
-    from lib.crystals.data import lbo3
+    from simulation.crystals.data import lbo3
     
     def Gau(w0, x, y, wt=None, t=None):
         return np.exp(-(x**2+y**2)/2/w0) if ((wt is None) or (t is None)) else np.exp(-(x**2+y**2)/2/w0)*np.exp(-t**2/2/wt)

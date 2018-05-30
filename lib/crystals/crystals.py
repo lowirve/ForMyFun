@@ -3,8 +3,7 @@
 @author: XuBo
 
 Class Crystal is created to perform all calculations related to crystals' optical properties. 
-It needs Sellmeiers equation and tensor d. The default manner to store such info will be in 
-a namedtuple stored in other file.
+It needs Sellmeiers equation and tensor d, which is stored in a namedtuple for each crystal.
 
 #reorganize the structure of data ??
 
@@ -12,11 +11,10 @@ a namedtuple stored in other file.
 from __future__ import division, print_function
 
 import numpy as np
-from data import ntCrys
-from data import *
+from data import ntCrys, lbo3
 from scipy.optimize import bisect
 
-#Please treat the crystal class as a tool box of all needed calculations.
+
 class crystal(object):
     _c = 2.99792458 # unit is 10^8 m/s
     _oa = None # optical axis
@@ -25,11 +23,11 @@ class crystal(object):
     _gihl = None # group indices
     _gvdhl = None # group velocity dispersion, unit is fs^2/mm
     _wl = 1.064 # wavelength, unite is um.
-    _tt = 25. # temperature, based on Celsius
+    _tt = 25. # temperature, based on centidegree
     _theta = 0. # rad
     _phi = 0. # rad
     _delta = 0. # rad
-    _material = None # the crystal info, namedtuple
+    _material = None # the crystal we are seeking PM
     _a = 0
     _b = 0
     _d = 0
@@ -38,14 +36,15 @@ class crystal(object):
     def material(self): # material data
         return self._material
     
-    @material.setter # one mandatory parameter
+    @material.setter
     def material(self, value):
         if isinstance(value, ntCrys):
             self._material = value
             self._fnx, self._fny, self._fnz = value.Sellmeier
+            self._dtensor = value.dtensor
             self._wlrange = value.wlrange
         else:
-            raise ValueError('Input must be a defined crystal, in namedtuple.')           
+            raise ValueError('Input must be a defined crystal')           
         
     @property # return the order of no/ne corresponding to nhi nlo. 0 is hi, 1 is low.
               # for are defined in the principle planes, otherwise shows None
@@ -238,6 +237,7 @@ class crystal(object):
         print ("nhi, nlo: {:.4f} {:.4f}".format(*self.nhl))
         print ("oa: {:.3f} deg".format(self.oa))
         print ("walkoff hi, lo: {:.2f} {:.2f} mrad".format(*(self.rhl*1e3)))
+        print ("Refractive index hi, lo: {:.6f} {:.6f}".format(*self.nhl))
         print ("group index hi, lo: {:.5f} {:.5f}".format(*self.gihl))
         print ("gvd hi, lo: {:.3f} {:.3f}".format(*self.gvdhl))
         print 
@@ -245,21 +245,20 @@ class crystal(object):
     def fbrewster(self):
         sol = []
         
-        try:         
-            _f = lambda x: self.nhl[0]*np.sin(x)-np.sin(np.pi/2-x)
-            
-            sol.append(bisect(_f, 0, np.pi/2))
-            
-            _f = lambda x: self.nhl[1]*np.sin(x)-np.sin(np.pi/2-x)
+        _f = lambda x: self.nhl[0]*np.sin(x)-np.sin(np.pi/2-x)
         
-            sol.append(bisect(_f, 0, np.pi/2)) 
+        sol.append(bisect(_f, 0, np.pi/2))
+        
+        _f = lambda x: self.nhl[1]*np.sin(x)-np.sin(np.pi/2-x)
+        
+        sol.append(bisect(_f, 0, np.pi/2))
+        
+        return np.array(sol)
+        
+        
+        
+
             
-            return np.array(sol)
-        
-        except:
-            print('No solution found.')
-        
-           
 if __name__ == '__main__':     
        
 #    lbo = crystal(lbo2)
@@ -272,14 +271,18 @@ if __name__ == '__main__':
 #            print ('wl: {}, tt: {}, theta: {}, phi: {}'.format(wl, tt, theta, phi))
 #            test1(lbo)            
     
-    crys = crystal(clbo, 532, 25, 40, 11.4)
- 
-    crys.show()
+    lbo = crystal(lbo3, 532, 25, 90, 11.4)
+#    lbo.tt = 25
+#    lbo.wl = 532
+#    lbo.delta = 90
+#    lbo.phi = 11.6   
+    lbo.show()
     
-    print(crys.brewster)
+    print(lbo.brewster)
     
-    crys.tt = 149
-    crys.wl = 1064
-    crys #???need to add the represent function.
+    lbo.tt = 149
+    lbo.wl = 1064
+    lbo
+
         
 

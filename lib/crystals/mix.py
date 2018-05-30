@@ -4,21 +4,15 @@ Phase matching class
 
 @author: XuBo
 
-Phase matching class
-
 Introduce a new ubiquitous function to calculate deff
 Introduce a new universal function to calculate phase matching at principle cuts
-
-The phasematching class calcuates different deff compared to SNLO. One 
-possibility is that SNLO calculates deff based on Miller's law and hence makes
-it wavelength-variable. This function will be added in the future.
 
 """
 import numpy as np
 from crystals import crystal
 from data import ntCrys
-from data import *
 from scipy.optimize import minimize_scalar#, bisect
+
     
 
 class phasematch(object):
@@ -290,11 +284,8 @@ class phasematch(object):
             
             #In this method, the first two items in the taylor expansion are used. Although for most cases wheren the angle is 
             #far away from NCPM this is redundent, it solves the issue when the angle is close to NCPM (+/- 0.5 deg).
-            try:
-                _temp = np.roots([0.5*dk2dtheta, dkdtheta, -2.784e-7])
-                return 2*np.deg2rad(_temp[_temp>0][0])*1e3
-            except:
-                return 0
+            _temp = np.roots([0.5*dk2dtheta, dkdtheta, -2.784e-7])
+            return 2*np.deg2rad(_temp[_temp>0][0])*1e3
         
 #           #an alternative way but not accurate enough. It assumes only at NCPM the second derivative is used. 
 #           #However, it was found when the angle is close to NCPM (+/- 0.5 deg), 
@@ -314,11 +305,8 @@ class phasematch(object):
             
             #In this method, the first two items in the taylor expansion are used. Although for most cases wheren the angle is 
             #far away from NCPM this is redundent, it solves the issue when the angle is close to NCPM (+/- 0.5 deg).
-            try:
-                _temp = np.roots([0.5*dk2dphi, dkdphi, -2.784e-7])
-                return 2*np.deg2rad(_temp[_temp>0][0])*1e3
-            except:
-                return 0
+            _temp = np.roots([0.5*dk2dphi, dkdphi, -2.784e-7])
+            return 2*np.deg2rad(_temp[_temp>0][0])*1e3
         
 #           #an alternative way but not accurate enough. It assumes only at NCPM the second derivative is used. 
 #           #However, it was found when the angle is close to NCPM (+/- 0.5 deg), 
@@ -394,7 +382,7 @@ class phasematch(object):
 if __name__ == '__main__':    
     from data import lbo3
     
-    p = phasematch(bbo2, [532, 532, 0], 40)
+    p = phasematch(lbo3, [1035, 1035, 0], 40)
     p.show('all')
     print(p.angles)
     

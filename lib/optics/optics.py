@@ -11,7 +11,7 @@ import numpy as np
 import sys
 sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
 #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
-from coordinate import xy
+from simulation.coordinate import xy
 
 class lens(object):
     
@@ -37,8 +37,8 @@ def propagate(Ein, dz, wl, space): # wl and z are in um
 
 if __name__ == '__main__':
     
-    from coordinate import xy
-#    from tools.plot.xy import image
+    from simulation.coordinate import xy
+    from plot.xy import image
     import matplotlib.pyplot as plt  
     from scipy.optimize import curve_fit
     
@@ -88,7 +88,7 @@ if __name__ == '__main__':
 #    
 #    plt.plot(np.abs(sol[:,ysize//2]))    
     
-    p0 = 152, 0, 7.5
+    p0 = 150, 0, 7.5
     
     coeff, _ = curve_fit(gauss, x, np.abs(sol[:,ysize//2]), p0=p0)
     
