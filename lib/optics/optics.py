@@ -8,10 +8,7 @@ Created on Mon Mar 26 16:31:23 2018
 from __future__ import division, print_function
 import numpy as np
 
-import sys
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
-from coordinate import xy
+from ..coordinate import xy
 
 class lens(object):
     

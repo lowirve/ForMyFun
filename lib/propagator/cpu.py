@@ -5,9 +5,6 @@ The same work for phase function or propagator class.
 """
 
 from __future__ import division, print_function  
-import sys
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
 import numpy as np
 
@@ -74,6 +71,7 @@ def phase(kx, ky, para, key, dw=None):
         else:
             return ky*para['ky']+kx*ky*para['kxky']+kx**2/2/kc*para['kx2']+ky**2/2/kc*para['ky2']#+kc#full phase
  
+    
 class propagator(object):   
     
     def __init__(self, crys, coord, key):
@@ -121,7 +119,7 @@ def xypropagator(E, x, y, dz, crys, key):
     
     return sol
 
-def xytpropagator(E, x, y, t, dz, crys, key):
+def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     
     kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])) # k in x
     ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])) # k in y
@@ -130,7 +128,11 @@ def xytpropagator(E, x, y, t, dz, crys, key):
     kxx, kyy, dww = np.meshgrid(kx, ky, dw, indexing = 'ij')
 
     para = kpara(crys, key)
-    kphase = phase(kxx, kyy, para, key, dww)
+    
+    if ref:
+        kphase = phase(para=para, kx=kxx, ky=kyy, dw=dww, key=key) - dww*para['dw']#most time-consuming step
+    else:
+        kphase = phase(para=para, kx=kxx, ky=kyy, dw=dww, key=key)
   
     kE = np.fft.fftn(E)
       
@@ -139,114 +141,3 @@ def xytpropagator(E, x, y, t, dz, crys, key):
     sol = np.fft.ifftn(kE2)
     
     return sol
-
-
-if __name__ == '__main__':    
-    
-    import sys
-    sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-    #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
-
-    from lib.tools.plot.xy import image
-    from timeit import default_timer as timer
-    from lib.crystals.data import lbo3
-    from lib.crystals.crystals import crystal
-    
-    def Gau(w0, x, y, wt=None, t=None):
-        return np.exp(-(x**2+y**2)/2/w0**2) if ((wt is None) or (t is None)) else np.exp(-(x**2+y**2)/2/w0**2)*np.exp(-t**2/2/wt**2)
-
-    wl = 1.064 #1.064 um
-    w0 = 100 # 500um
-    wt = 30 # 30ps
-    dz = 500 # 500um
-    
-    xsize = 128
-    ysize = 128
-    tsize = 64
-        
-    crys = crystal(lbo3, wl*1e3, 25, 90, 45)
-    crys.show()
-        
-    key = 'hi'
-    
-    x = np.linspace(-256*1, 256*1, xsize)
-    y = np.linspace(-256*1, 256*1, ysize)
-    
-    space1 = xy(x, y)
-   
-    E = Gau(w0, space1.xx, space1.yy)
-    E = E.astype(np.complex64)
-    
-#    image(E)
-    
-    start = timer()
- 
-    sol1 = xypropagator(E, x, y, dz, crys, key)
-
-    end = timer()
-    print(end - start)
-    
-#    image(sol1)  
-    
-    start = timer()
-    
-    sol = propagator(crys, space1, key)
-    
-    sol.load(dz)
-    sol.propagate(E)
- 
-    sol2 = sol.get()
-    
-    end = timer()
-    print(end - start)
-    
-#    image(sol2)  
-    
-    print(np.allclose(sol1, sol2))
-    
-    x = np.linspace(-256*1, 256*1, xsize)
-    y = np.linspace(-256*1, 256*1, ysize)
-    t = np.linspace(-64*1, 63*1, tsize)
-    
-    space2 = xyt(x, y, t)
-    
-    E = Gau(w0, space2.xxx, space2.yyy, wt, space2.ttt)
-    E = E.astype(np.complex64)
-    
-#    image(E[:,:,tsize//2])
-    
-    start = timer()
-
-    sol3 = xytpropagator(E, x, y, t, dz, crys, key)
-    
-    end = timer()
-    print(end - start)   
-     
-#    image(sol2[:,:,tsize//2])   
-    
-    start = timer()
-    
-    sol = propagator(crys, space2, key)
-    
-    sol.load(dz)
-    sol.propagate(E)
- 
-    sol4 = sol.get()
-    
-    end = timer()
-    print(end - start)
-    
-    print(np.allclose(sol3, sol4))
-    
-
-
-
-    
-
-    
-    
-    
-    
-    
-    
-    

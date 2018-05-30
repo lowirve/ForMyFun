@@ -15,9 +15,9 @@ it wavelength-variable. This function will be added in the future.
 
 """
 import numpy as np
-from crystals import crystal
-from data import ntCrys
-from data import *
+from .crystals import crystal
+from .data import ntCrys
+from .data import *
 from scipy.optimize import minimize_scalar#, bisect
     
 

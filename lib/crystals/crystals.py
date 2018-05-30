@@ -12,8 +12,8 @@ a namedtuple stored in other file.
 from __future__ import division, print_function
 
 import numpy as np
-from data import ntCrys
-from data import *
+from .data import ntCrys
+from .data import *
 from scipy.optimize import bisect
 
 #Please treat the crystal class as a tool box of all needed calculations.
