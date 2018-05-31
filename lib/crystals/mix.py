@@ -9,18 +9,12 @@ Introduce a new universal function to calculate phase matching at principle cuts
 
 """
 import numpy as np
-<<<<<<< HEAD:temp/crystals/mix.py
-from crystals import crystal
-from data import ntCrys
-from scipy.optimize import minimize_scalar#, bisect    
-=======
+
 from .crystals import crystal
 from .data import ntCrys
 from .data import *
 from scipy.optimize import minimize_scalar#, bisect
     
->>>>>>> package:lib/crystals/mix.py
-
 class phasematch(object):
     
     _wls = [1064, 1064, 532] # wavelength pair, unite is nm.

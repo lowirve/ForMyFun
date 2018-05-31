@@ -4,15 +4,12 @@
 """
 
 from __future__ import division, print_function  
-<<<<<<< HEAD:temp/propagator/cpu.py
 
 import numpy as np
 
 import sys
 sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
 #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
-=======
->>>>>>> package:lib/propagator/cpu.py
 
 from simulation.crystals import crystal
 from simulation.coordinate import xy, xyt
@@ -144,7 +141,6 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     sol = np.fft.ifftn(kE2)
     
     return sol
-<<<<<<< HEAD:temp/propagator/cpu.py
 
 
 if __name__ == '__main__':    
@@ -247,9 +243,4 @@ if __name__ == '__main__':
     
     
     
-    
-    
-    
-    
-=======
->>>>>>> package:lib/propagator/cpu.py
+

@@ -8,14 +8,8 @@ Created on Mon Mar 26 16:31:23 2018
 from __future__ import division, print_function
 import numpy as np
 
-<<<<<<< HEAD:temp/optics/optics.py
-import sys
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
-from simulation.coordinate import xy
-=======
 from ..coordinate import xy
->>>>>>> package:lib/optics/optics.py
+
 
 class lens(object):
     
