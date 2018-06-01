@@ -7,15 +7,15 @@ from __future__ import division, print_function
 import numpy as np
 import sys
 
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\temp')
+#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\temp')
 
-from simulation.propagator import cpu
-from simulation.propagator import gpu
+from propagator import cpu
+from propagator import gpu
 
-from simulation.crystals import crystal
-from simulation.crystals.data import lbo3
-from simulation.coordinate import xyt
+from crystals.crystals import crystal
+from crystals.data import lbo3
+from coordinate import xyt
 
 from timeit import default_timer as timer
 

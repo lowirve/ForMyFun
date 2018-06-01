@@ -7,12 +7,12 @@ from __future__ import division, print_function
 import numpy as np
 import sys
 
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\temp')
+#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\temp')
 
-from simulation.ode import cpu
-from simulation.ode import gpu32
-from simulation.ode import parallel as pl
+from ode import cpu
+from ode import gpu
+from ode import parallel as pl
 
 from cmath import exp
 from numba import cuda
@@ -81,7 +81,7 @@ def comparison(xsize, ysize):
 # gpu parallel computing -> E2
     start = timer()
     
-    test = gpu32.ode(x0, x1, gf, 3, args)#overhead
+    test = gpu.ode(x0, x1, gf, 3, args)#overhead
     
     test.move([A, B, C], [E2[:,:,i] for i in range(3)])
     

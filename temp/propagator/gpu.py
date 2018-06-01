@@ -11,8 +11,8 @@ import numpy as np
 from cmath import exp
 
 import sys
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\temp')
+#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\temp')
 
 from crystals import crystal
 from coordinate import xy, xyt
@@ -122,7 +122,7 @@ class propagator(object):
     def __init__(self, ph, ref=None):
         self.phase = ph
            
-        if ref:
+        if ref is not None:
             self.load_ref(ref)
             
         nnn = np.prod(self.phase.shape, dtype=np.int32) 

@@ -7,26 +7,26 @@ from __future__ import division, print_function
 
 import sys
 
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
+sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\temp')
 #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
 from numba import cuda
 import numpy as np
 
 from timeit import default_timer as timer
-from simulation.nonlinear.gpu import sfg  
-from simulation.laser.gaussian import normgau
-from simulation.coordinate import xyt, xy
+from nonlinear.gpu import sfg  
+from tools.functions import normgau
+from coordinate import xyt#, xy
 
-from simulation.crystals import crystal
-from simulation.crystals.data import lbo3
+from crystals.crystals import crystal
+from crystals.data import lbo3
 
-from simulation.propagator.gpu import propagator
-from simulation.ode.gpu import ode
+from propagator.gpu import propagator
+from ode.gpu import ode
 
 #from simulation.crystals.phasematch
 
-from plot.xy import image
+#from plot.xy import image
     
 
 def evolution(space, crystals, keys, lasers, args, gf, z, step):
@@ -38,9 +38,10 @@ def evolution(space, crystals, keys, lasers, args, gf, z, step):
     red1, red2, blue = crystals
     
     red1 = propagator(red1, space, keys[0])
-    red1.load_ref(red1.para['dw'])
-    red2 = propagator(red2, space, keys[1], red1.para['dw'])
-    blue = propagator(blue, space, keys[2], red1.para['dw'])
+    ref = red1.para['dw']*space.www
+    red1.load_ref(ref)
+    red2 = propagator(red2, space, keys[1], ref)
+    blue = propagator(blue, space, keys[2], ref)
     
     h = z/step
     
