@@ -5,8 +5,8 @@ Phase matching class
 @author: XuBo
 """
 import numpy as np
-from .crystals import crystal
-from .data import ntCrys
+from crystals import crystal
+from data import ntCrys
 
 def xyztensor(tensor):
     """a function to transfer d tensor from numpy.array to a dictionary based on xyz."""   

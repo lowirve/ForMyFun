@@ -5,8 +5,7 @@
 
 __all__ = ['data', 'crystals', 'phasematch']
 
-from crystals import *
-from data import *
-from phasematch import *
+from .data import *
+
 
 

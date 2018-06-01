@@ -4,18 +4,15 @@
 """
 
 from __future__ import division, print_function  
-<<<<<<< HEAD:temp/propagator/cpu.py
 
 import numpy as np
 
 import sys
-sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
-#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
-=======
->>>>>>> package:lib/propagator/cpu.py
+sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\temp')
+#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\temp')
 
-from simulation.crystals import crystal
-from simulation.coordinate import xy, xyt
+from crystals import crystal
+from coordinate import xy, xyt
 
 c = 2.99792458e2 # unit is (um/ps) 
 
@@ -144,14 +141,13 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     sol = np.fft.ifftn(kE2)
     
     return sol
-<<<<<<< HEAD:temp/propagator/cpu.py
 
 
 if __name__ == '__main__':    
     
-    from plot.xy import image
+#    from xy import image
     from timeit import default_timer as timer
-    from simulation.crystals.data import lbo3
+    from crystals.data import lbo3
     
     def Gau(w0, x, y, wt=None, t=None):
         return np.exp(-(x**2+y**2)/2/w0**2) if ((wt is None) or (t is None)) else np.exp(-(x**2+y**2)/2/w0**2)*np.exp(-t**2/2/wt**2)
@@ -244,12 +240,3 @@ if __name__ == '__main__':
 
     
 
-    
-    
-    
-    
-    
-    
-    
-=======
->>>>>>> package:lib/propagator/cpu.py

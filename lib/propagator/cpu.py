@@ -1,18 +1,21 @@
 # -*- coding: utf-8 -*-
 """
-
+import crystal is not necessary. Maybe rewrite kpara and make it compatible with other data format.
+The same work for phase function or propagator class.
 """
 
 from __future__ import division, print_function  
-
-import numpy as np
-
 import sys
 sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
 #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
-from simulation.crystals import crystal
-from simulation.coordinate import xy, xyt
+import numpy as np
+
+from lib.coordinate import xy, xyt#one solution to solve the mutual import within one package is using
+                                  #relative import, such as "from .coordinate import xy, xyt". The problem
+                                  #is that relative import only works for package. So module file written in
+                                  #this way will run in Spyder individually. The other way is to use absolute
+                                  #import. But in this way, the directory must be added to the intepretor first.
 
 c = 2.99792458e2 # unit is (um/ps) 
 
@@ -71,7 +74,6 @@ def phase(kx, ky, para, key, dw=None):
         else:
             return ky*para['ky']+kx*ky*para['kxky']+kx**2/2/kc*para['kx2']+ky**2/2/kc*para['ky2']#+kc#full phase
  
-    
 class propagator(object):   
     
     def __init__(self, crys, coord, key):
@@ -119,7 +121,7 @@ def xypropagator(E, x, y, dz, crys, key):
     
     return sol
 
-def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
+def xytpropagator(E, x, y, t, dz, crys, key):
     
     kx = 2*np.pi*np.fft.fftfreq(x.size, d = (x[1]-x[0])) # k in x
     ky = 2*np.pi*np.fft.fftfreq(y.size, d = (y[1]-y[0])) # k in y
@@ -128,11 +130,7 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     kxx, kyy, dww = np.meshgrid(kx, ky, dw, indexing = 'ij')
 
     para = kpara(crys, key)
-    
-    if ref:
-        kphase = phase(para=para, kx=kxx, ky=kyy, dw=dww, key=key) - dww*para['dw']#most time-consuming step
-    else:
-        kphase = phase(para=para, kx=kxx, ky=kyy, dw=dww, key=key)
+    kphase = phase(kxx, kyy, para, key, dww)
   
     kE = np.fft.fftn(E)
       
@@ -145,9 +143,14 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
 
 if __name__ == '__main__':    
     
-    from plot.xy import image
+    import sys
+    sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
+    #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+
+    from lib.tools.plot.xy import image
     from timeit import default_timer as timer
-    from simulation.crystals.data import lbo3
+    from lib.crystals.data import lbo3
+    from lib.crystals.crystals import crystal
     
     def Gau(w0, x, y, wt=None, t=None):
         return np.exp(-(x**2+y**2)/2/w0**2) if ((wt is None) or (t is None)) else np.exp(-(x**2+y**2)/2/w0**2)*np.exp(-t**2/2/wt**2)
@@ -243,4 +246,7 @@ if __name__ == '__main__':
     
     
     
-
+    
+    
+    
+    

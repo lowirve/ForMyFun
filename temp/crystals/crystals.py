@@ -11,12 +11,9 @@ It needs Sellmeiers equation and tensor d, which is stored in a namedtuple for e
 from __future__ import division, print_function
 
 import numpy as np
-<<<<<<< HEAD:temp/crystals/crystals.py
+
 from data import ntCrys, lbo3
-=======
-from .data import ntCrys
-from .data import *
->>>>>>> package:lib/crystals/crystals.py
+
 from scipy.optimize import bisect
 
 

@@ -10,16 +10,13 @@ from pyculib import fft
 import numpy as np
 from cmath import exp
 
-<<<<<<< HEAD:temp/propagator/gpu.py
 import sys
 sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
 #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
 
 from crystals import crystal
 from coordinate import xy, xyt
-=======
-from ..coordinate import xy, xyt
->>>>>>> package:lib/propagator/gpu.py
+
 
 c = 2.99792458e2 # unit is (um/ps) 
 
@@ -319,8 +316,6 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     stream.synchronize()
     
     return sol
-        
-<<<<<<< HEAD:temp/propagator/gpu.py
 
 
 if __name__ == '__main__':    
@@ -415,6 +410,3 @@ if __name__ == '__main__':
     print(end - start)
     
     print(np.allclose(sol3, sol4))
-    
-=======
->>>>>>> package:lib/propagator/gpu.py

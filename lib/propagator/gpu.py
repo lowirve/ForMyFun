@@ -10,62 +10,52 @@ from pyculib import fft
 import numpy as np
 from cmath import exp
 
-from ..coordinate import xy, xyt
+import sys
+sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
+#sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
+
+from lib.crystals import crystal
+from lib.coordinate import xy, xyt
+
 
 c = 2.99792458e2 # unit is (um/ps) 
 
-def crystal_wrap(func):
-    def wrapper(crys, key):        
-        return func(key, **crys.parameters())   
-    return wrapper
+def k(wl, n): 
+    return 2*np.pi*n/wl
 
-@crystal_wrap
-def kpara(key, **kwargs):
+def kpara(crystal, key):
     # In an (x, y, z) axis system where z is parallel to k,x is parallel to hi eigenpolarizatoin walkoff,
     # and y is parallel to lo eigenpolarization walkoff.
-    
-    """
-    The function is to calculate the coefficients of taylor expansion for the phase term.
-    So far, it only works for principle plan cut.
-    """
     
     if not (key in ('lo', 'hi')):
         raise ValueError("key must be either 'hi' or 'lo'.")
         
-    def k(wl, n): 
-        return 2*np.pi*n/wl    
-    
-    #below parameters are mandatory.     
-    nx = kwargs.pop('nx')
-    ny = kwargs.pop('ny')
-    nz = kwargs.pop('nz')
+    nx = crystal.nx
+    ny = crystal.ny
+    nz = crystal.nz
         
-    nlo = kwargs.pop('nlo')
-    nhi = kwargs.pop('nhi')
+    nlo = crystal.nhl[1]
+    nhi = crystal.nhl[0]
     
-    wl = kwargs.pop('wl')
+    rlo = crystal.rhl[1]
+    rhi = crystal.rhl[0]
     
-    #below parameters are optional.
-    rlo = kwargs.pop('rlo', 0)
-    rhi = kwargs.pop('rhi', 0)
+    gihi = crystal.gihl[0]
+    gilo = crystal.gihl[1]
     
-    gihi = kwargs.pop('gihi', 0)
-    gilo = kwargs.pop('gilo', 0)
+    gvdhi = crystal.gvdhl[0]
+    gvdlo = crystal.gvdhl[1]
     
-    gvdhi = kwargs.pop('gvdhi', 0)
-    gvdlo = kwargs.pop('gvdlo', 0)          
-    
-    #there seems to exist high-order symmetry between the functions of hi and lo. Need to dig in more.
     if key == 'hi':
         return {'kx':np.tan(rhi), 'ky': 0, 'kxky':np.tan(rhi)*np.tan(rlo)*(nhi**2/(nhi**2-nlo**2)),
               'ky2':-(1-(nlo**2/(nhi**2-nlo**2))*np.tan(rhi)**2), 
               'kx2':-(-(nhi**2/(nhi**2-nlo**2))*np.tan(rlo)**2+np.tan(rhi)**2+nhi**4*nlo**2/(nx*ny*nz)**2),
-              'dw':gihi/c, 'dw2': gvdhi/2e9, 'kc': k(wl/1e3, nhi)}    
+              'dw':gihi/c, 'dw2': gvdhi/2e9, 'kc': k(crystal.wl/1e3, crystal.nhl[0])}    
     else:
         return {'kx': 0, 'ky':np.tan(rlo), 'kxky':-np.tan(rhi)*np.tan(rlo)*(nlo**2/(nhi**2-nlo**2)),
               'kx2':-(1-(-nhi**2/(nhi**2-nlo**2))*np.tan(rlo)**2), 
               'ky2':-(-(-nlo**2/(nhi**2-nlo**2))*np.tan(rhi)**2+np.tan(rlo)**2+nhi**2*nlo**4/(nx*ny*nz)**2),
-              'dw':gilo/c, 'dw2': gvdlo/2e9, 'kc': k(wl/1e3, nlo)} 
+              'dw':gilo/c, 'dw2': gvdlo/2e9, 'kc': k(crystal.wl/1e3, crystal.nhl[1])} 
         
         
 def phase(para, **kwargs):
@@ -89,39 +79,23 @@ def multiple3(A, B):
     i, j, k = cuda.grid(3)
     if i < A.shape[0] and j < A.shape[1] and k < A.shape[2]:
         A[i,j,k] *= exp(B[i,j,k]) 
-
-def phase_wrap(cls):
-    """This wrapper changes the propagator class from a general class to a specified class for birefringent crystals"""
-    class wrapper(cls) :             
-        def __init__(self, crys, coord, key, ref=None):
-            para = kpara(crys, key)
-                
-            if type(coord) == xy:
-                ph = phase(para, kx=coord.kxx, ky=coord.kyy)
-                
-            elif type(coord) == xyt: #xy is the superclass of xyt. So isinstance(xyt(), xy) returns true. Type(), on the other hand, returns false.
-                ph = phase(para, kx=coord.kxxx, ky=coord.kyyy, dw=coord.www)  
-            
-            super(wrapper, self).__init__(ph, ref)
-            self.para = para
-    wrapper.__name__ = cls.__name__    
-    return wrapper
-        
-@phase_wrap
+ 
+    
 class propagator(object):    
 
     _streamsource = 'internal'
     _solcalculated = False
     
-    def __init__(self, ph, ref=None):
-        self.phase = ph
-           
-        if ref:
-            self.load_ref(ref)
-            
-        nnn = np.prod(self.phase.shape, dtype=np.int32) 
+    def __init__(self, crys, coord, key, ref=None):
+        self.para = kpara(crys, key)
+        self.key = key
+        self.coord = coord
         
-        if len(self.phase.shape) == 2:           
+        if type(coord) == xy:
+            self.phase = phase(self.para, kx=coord.kxx, ky=coord.kyy)
+            
+            nnn = np.prod(self.phase.shape, dtype=np.int32) 
+            
             TPB = np.array([16, 16])
             BPG = np.array(self.phase.shape)/TPB
             BPG = BPG.astype(np.int)
@@ -136,8 +110,16 @@ class propagator(object):
                     A[i,j] /= nnn 
                     
             self._multiple =multiple2 
-
-        elif len(self.phase.shape) == 3:                     
+            
+        
+        elif type(coord) == xyt: #xy is the superclass of xyt. So isinstance(xyt(), xy) returns true. Type(), on the other hand, returns false.
+            self.phase = phase(self.para, kx=coord.kxxx, ky=coord.kyyy, dw=coord.www)
+                     
+            if ref:
+                self.load_ref(ref)
+            
+            nnn = np.prod(self.phase.shape, dtype=np.int32) 
+                    
             TPB = np.array([8, 8, 4])
             BPG = np.array(self.phase.shape)/TPB
             BPG = BPG.astype(np.int)
@@ -156,7 +138,7 @@ class propagator(object):
         self._division = division
         
     def load_ref(self, ref):
-        self.phase -= ref #self.coord default is one. So it will not alter the class performance
+        self.phase -= self.coord.www*ref
             
     def load(self, dz, stream=None):   
         """load dz and stream. Hence once either dz or stream needs to be updated, run this function.
@@ -310,12 +292,13 @@ def xytpropagator(E, x, y, t, dz, crys, key, ref=False):
     stream.synchronize()
     
     return sol
+        
 
 
 if __name__ == '__main__':    
     
     from timeit import default_timer as timer
-    from crystals.data import lbo3
+    from lib.crystals.data import lbo3
     
     def Gau(w0, x, y, wt=None, t=None):
         return np.exp(-(x**2+y**2)/2/w0) if ((wt is None) or (t is None)) else np.exp(-(x**2+y**2)/2/w0)*np.exp(-t**2/2/wt)
@@ -393,7 +376,7 @@ if __name__ == '__main__':
     start = timer()
     
     sol = propagator(crys, space2, key)
-    sol.load_ref(sol.para['dw']*space2.www)
+    sol.load_ref(sol.para['dw'])
     
     sol.load(dz)
     sol.propagate(E)
@@ -405,4 +388,3 @@ if __name__ == '__main__':
     
     print(np.allclose(sol3, sol4))
     
-
