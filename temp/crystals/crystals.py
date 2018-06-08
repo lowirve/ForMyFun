@@ -84,6 +84,11 @@ class crystal(object):
     def nhl(self): 
         self._nhl = self.fnhl(self._theta, self._phi, self.nx, self.ny, self.nz)
         return self._nhl  
+    
+    @property # eigenpolarization axes, return (angle of hi, nlo)
+    def deltahl(self): 
+        self._deltahl = self.fdeltahl(self._theta, self._phi, self.nx, self.ny, self.nz)
+        return np.rad2deg(self._deltahl)
 
     @property # walkoff for each eigenpolarization, return (rho_hi, rho_lo)
     def rhl(self): 
@@ -181,7 +186,29 @@ class crystal(object):
 #        from scipy import optimize
 #        x0 = np.array([nz, nx])
 #        return optimize.fsolve(fFresnel, x0)
-    
+        
+    def fdeltahl(self, theta, phi, nx, ny, nz):
+        """This function is to calculate delta angles corresponding to nhi and nlo eigenpolarization directions at the new coordinates 
+        where the propogation vector (k) is the z'' axis. The angle is defined from x'' to the hi and lo axes. Counterclockwise direction 
+        about z'' (k) axis, righthand, is positive. How the new x'', y'', and z'' coordinates are defined can be found in Arlee V. Smith's 
+        Book, Page 28-29. """
+        
+        cosT = np.cos(theta)
+        cosP = np.cos(phi)
+        sinP = np.sin(phi)
+        sinT = np.sin(theta)
+        
+        self._a = cosT**2*cosP**2/nx**2+cosT**2*sinP**2/ny**2+sinT**2/nz**2
+        self._b = 2*cosT*sinP*cosP*(ny**(-2)-nx**(-2))
+        self._d = sinP**2*nx**(-2)+cosP**2*ny**(-2)
+        
+
+        self._delta = 0.5*(np.arctan(self._b/(self._a-self._d)))
+        
+        if self._a < self._d:        
+            return np.array((self._delta, self._delta+np.pi/2))   
+        else:
+            return np.array((self._delta+np.pi/2, self._delta)) 
     
     def fwalkoff(self, theta, phi, nx, ny, nz, n):  
         """This function is to calculate the walkoff at a given refractive index"""

@@ -8,18 +8,13 @@ Introduce a new ubiquitous function to calculate deff
 Introduce a new universal function to calculate phase matching at principle cuts
 
 """
+from __future__ import division, print_function
+
 import numpy as np
-<<<<<<< HEAD:temp/crystals/mix.py
 from crystals import crystal
 from data import ntCrys
 from scipy.optimize import minimize_scalar#, bisect    
-=======
-from .crystals import crystal
-from .data import ntCrys
-from .data import *
-from scipy.optimize import minimize_scalar#, bisect
-    
->>>>>>> package:lib/crystals/mix.py
+
 
 class phasematch(object):
     
@@ -101,7 +96,7 @@ class phasematch(object):
             if lvalue.count(0) != 1:
                 raise ValueError
         except ValueError:
-            print "Input must have one zero. Please try again"
+            print("Input must have one zero. Please try again")
             return None
     
         index = lvalue.index(0)
@@ -244,21 +239,21 @@ class phasematch(object):
         else:
             data = {key:self.data[key]}
         for key1, value1 in data.iteritems():
-            print key1
+            print(key1)
             for key2, value2 in value1.iteritems():
 #                if abs(value2['deff']) > 1e-2:
-                print '                       {0:5.1f} ({1}) + {2:5.1f} ({3}) = {4:5.1f} ({5})'.format(
-                        *[item for sublist in zip(self._wls, value2['polarization']) for item in sublist])
-                print 'Walkoff:               {0:>5.2f}         {1:>5.2f}       {2:>5.2f} mrad'.format(*(value*1e3 for value in value2['walkoff']))
-                print 'Phase indices:         {0:5.3f}         {1:5.3f}       {2:5.3f}'.format(*value2['n'])
-                print 'Group indices:         {0:5.3f}         {1:5.3f}       {2:5.3f}'.format(*value2['gi'])
-                print 'GVD:                   {0:5.1f}         {1:5.1f}       {2:5.1f} fs^2/mm'.format(*value2['gvd'])
-                print 'theta, phi:            {0:5.1f}         {1:5.1f} deg'.format(*value2['angle'])
-                print 'deff:                  {0:5.3f} pm/V'.format(value2['deff'])
-                print 'ang. tol. theta, phi:  {0:5.2f}        {1:5.2f} mradxcm'.format(*value2['angtol'])
-                print 'temperature tol.:      {0:5.2f} Kxcm'.format(value2['tttol'])
-                print 'accpt bw 1&3 and 2&3:  {0:5.2f}        {1:5.2f} cm-1xcm'.format(*value2['bw'])
-                print
+                print ('                       {0:5.1f} ({1}) + {2:5.1f} ({3}) = {4:5.1f} ({5})'.format(
+                        *[item for sublist in zip(self._wls, value2['polarization']) for item in sublist]))
+                print ('Walkoff:               {0:>5.2f}         {1:>5.2f}       {2:>5.2f} mrad'.format(*(value*1e3 for value in value2['walkoff'])))
+                print ('Phase indices:         {0:5.3f}         {1:5.3f}       {2:5.3f}'.format(*value2['n']))
+                print ('Group indices:         {0:5.3f}         {1:5.3f}       {2:5.3f}'.format(*value2['gi']))
+                print ('GVD:                   {0:5.1f}         {1:5.1f}       {2:5.1f} fs^2/mm'.format(*value2['gvd']))
+                print ('theta, phi:            {0:5.1f}         {1:5.1f} deg'.format(*value2['angle']))
+                print ('deff:                  {0:5.3f} pm/V'.format(value2['deff']))
+                print ('ang. tol. theta, phi:  {0:5.2f}        {1:5.2f} mradxcm'.format(*value2['angtol']))
+                print ('temperature tol.:      {0:5.2f} Kxcm'.format(value2['tttol']))
+                print ('accpt bw 1&3 and 2&3:  {0:5.2f}        {1:5.2f} cm-1xcm'.format(*value2['bw']))
+                print()
 
     # Be careful that during the calculation, the crystals internal status (tt, wls, theta, phi) can be altered.
     # Hence it is unsafe to use these result without reassignment.

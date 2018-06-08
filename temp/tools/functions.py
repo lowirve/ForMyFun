@@ -9,18 +9,17 @@ from __future__ import division, print_function
 
 import numpy as np
 
-def normgau(**kwargs):
-
-    x = kwargs.pop('x', 0)
-    wx = kwargs.pop('wx', 1)
+def normgau(dimension, width, shift=[0, 0, 0]):
     
-    y = kwargs.pop('y', 0)
-    wy = kwargs.pop('wy', wx)
+    sol = 1
     
-    t = kwargs.pop('t', 0)
-    wt = kwargs.pop('wt', wx)
+    for i in range(len(dimension)):
+        sol *= np.exp(-2*((dimension[i]-shift[i])/width[i])**2)
         
-    return np.exp(-2*(x/wx)**2)*np.exp(-2*(y/wy)**2)*np.exp(-2*(t/wt)**2)+0j    
+    return sol + 0j    
+
+def integrate(values, steps):
+    return np.sum(values*np.prod(steps))
 
 
 if __name__ == '__main__':
@@ -30,7 +29,7 @@ if __name__ == '__main__':
     sys.path.append(r'C:\Users\xub\Desktop\Python project\Packages\lib')
     #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
     
-    from simulation.coordinate import xyt, xy
+    from coordinate import xyt, xy
     from mpl_toolkits.mplot3d import Axes3D
     import matplotlib.pyplot as plt
     
@@ -51,19 +50,16 @@ if __name__ == '__main__':
     a = xy(x, y)
     b = xyt(x, y, t)
     
-    ia = normgau(x=a.xx, y=a.yy, wx=w0)
-    ib = normgau(x=b.xxx, y=b.yyy, wx=w0, t=b.ttt, wt=wt)
+    ia = normgau([a.xx, a.yy], [w0, w0])
+    ib = normgau([b.xxx, b.yyy, b.ttt], [w0, w0, wt])   
     
-    
-    
-    print('numerical result: {}'.format(np.sum(abs(ia)*a.dx*a.dy)))
+    print('numerical result: {}'.format(integrate(abs(ia),(a.dx,a.dy))))
     print('analytical result: {}'.format(np.pi/2*w0**2))    
     
     print()
     
-    print('numerical result: {}'.format(np.sum(abs(ib)*b.dx*b.dy*b.dt)))
-    print('analytical result: {}'.format((np.pi/2)**1.5*w0**2*wt)) 
-    
+    print('numerical result: {}'.format(integrate(abs(ib),(b.dx,b.dy,b.dt))))
+    print('analytical result: {}'.format((np.pi/2)**1.5*w0**2*wt))     
     
     fig, (ax1, ax2) = plt.subplots(1,2,subplot_kw={'projection': '3d'})
     
