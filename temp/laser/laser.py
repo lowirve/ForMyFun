@@ -19,16 +19,16 @@ e0 = 8.854187817e-18 #F/um (V/C/um)
 
 class laser(object):
     
-    def __init__(self, Eprofile, coord, pe, n=1):#ip is short for pulse energy or power
+    def __init__(self, Iprofile, coord, pe, n=1, phase=0):#pe is short for pulse energy or power
         
         self.coordinate = coord
         
-        self.Eprofile = np.sqrt(2*pe/c/e0/n/integrate(abs(Eprofile)**2, coord.step()))*Eprofile+0j
-    
-        self.profile = 1/2*c*e0*n*abs(self.Eprofile)**2
+        self.Iprofile = pe/integrate(Iprofile, coord.step())*Iprofile
+        
+        self.Eprofile = np.sqrt(2*self.Iprofile/c/e0/n)*np.exp(1j*phase)
         
     def _pe(self):
-        return integrate(self.profile, self.coordinate.step())
+        return integrate(self.Iprofile, self.coordinate.step())
         
 
 class cw(laser):

@@ -378,14 +378,22 @@ class phasematch(object):
         temp = np.einsum('ij,j->i', self._dtensor, e12)
         
         return np.einsum('i,i->', e3, temp)
-
+    
+    def crystals(self, key1, key2):
+        theta, phi = self.angles[key1][key2]
+        self._update(self._crystals, self.wls, self.tt, theta, phi)
+        return self._crystals
    
 if __name__ == '__main__':    
     from data import lbo3
     
-    p = phasematch(lbo3, [1035, 1035, 0], 40)
+    p = phasematch(lbo3, [1064, 1064, 0], 150)
     p.show('all')
     print(p.angles)
+    print()
+    print(p.data['XY'])
+    print()
+    print(p.crystals('XY', 'ooe'))
     
     
 

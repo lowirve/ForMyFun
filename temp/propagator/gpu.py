@@ -110,7 +110,9 @@ def phase_wrap(cls):
             
             super(wrapper, self).__init__(ph, ref)
             self.para = para
+            
     wrapper.__name__ = cls.__name__    
+    
     return wrapper
         
 @phase_wrap

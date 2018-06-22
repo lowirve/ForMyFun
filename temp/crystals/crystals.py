@@ -86,9 +86,10 @@ class crystal(object):
         return self._nhl  
     
     @property # eigenpolarization axes, return (angle of hi, nlo)
-    def deltahl(self): 
-        self._deltahl = self.fdeltahl(self._theta, self._phi, self.nx, self.ny, self.nz)
-        return np.rad2deg(self._deltahl)
+    def delta(self): 
+        self._delta = self.fdelta(self._theta, self._phi, self.nx, self.ny, self.nz)
+#        self._delta = self.fdelta2(self._theta, self._phi, self.nx, self.ny, self.nz, self.nhl) #confirm to show same result as the above one
+        return np.rad2deg(self._delta)
 
     @property # walkoff for each eigenpolarization, return (rho_hi, rho_lo)
     def rhl(self): 
@@ -187,7 +188,7 @@ class crystal(object):
 #        x0 = np.array([nz, nx])
 #        return optimize.fsolve(fFresnel, x0)
         
-    def fdeltahl(self, theta, phi, nx, ny, nz):
+    def fdelta(self, theta, phi, nx, ny, nz):
         """This function is to calculate delta angles corresponding to nhi and nlo eigenpolarization directions at the new coordinates 
         where the propogation vector (k) is the z'' axis. The angle is defined from x'' to the hi and lo axes. Counterclockwise direction 
         about z'' (k) axis, righthand, is positive. How the new x'', y'', and z'' coordinates are defined can be found in Arlee V. Smith's 
@@ -200,8 +201,7 @@ class crystal(object):
         
         self._a = cosT**2*cosP**2/nx**2+cosT**2*sinP**2/ny**2+sinT**2/nz**2
         self._b = 2*cosT*sinP*cosP*(ny**(-2)-nx**(-2))
-        self._d = sinP**2*nx**(-2)+cosP**2*ny**(-2)
-        
+        self._d = sinP**2*nx**(-2)+cosP**2*ny**(-2)        
 
         self._delta = 0.5*(np.arctan(self._b/(self._a-self._d)))
         
@@ -209,6 +209,46 @@ class crystal(object):
             return np.array((self._delta, self._delta+np.pi/2))   
         else:
             return np.array((self._delta+np.pi/2, self._delta)) 
+
+    def fdelta2(self, theta, phi, nx, ny, nz, n):  
+        """This function represents an alternative approach to get the delta function, or more precisely the D electric displacement
+        field projections on x, y and z axes. Due to the function limitation, it will only work for non-principle-plane cut, otherwise
+        it will return division by 0. This part, however, can be improved"""
+        
+        def rotate(index, angle, axis):
+            cos = np.cos(angle)
+            sin = np.sin(angle)
+            
+            x = np.array([[1, 0, 0],[0, cos, -sin],[0, sin, cos]])
+            y = np.array([[cos, 0, sin],[0, 1, 0],[-sin, 0, cos]])
+            z = np.array([[cos, -sin, 0],[sin, cos, 0],[0, 0, 1]])
+            
+            ref = {'x':x.T, 'y':y.T, 'z':z.T}
+            
+            return np.dot(ref[axis], index)
+        
+        def Dindex(theta, phi, nx, ny, nz, n):
+            kx = np.sin(theta)*np.cos(phi)
+            ky = np.sin(theta)*np.sin(phi)
+            kz = np.cos(theta)
+            
+            n1 = nx**-2-n**-2
+            n2 = ny**-2-n**-2
+            n3 = nz**-2-n**-2
+            
+            D = np.sqrt((kx/n1)**2+(ky/n2)**2+(kz/n3)**2)
+            
+            dx = kx/D/n1
+            dy = ky/D/n2
+            dz = kz/D/n3
+            
+            return np.array([dx, dy, dz])
+        
+        sol = Dindex(theta, phi, nx, ny, nz, n)
+        sol = rotate(sol, phi, 'z')
+        sol = rotate(sol, theta, 'y')
+        
+        return np.arctan(sol[1]/sol[0])            
     
     def fwalkoff(self, theta, phi, nx, ny, nz, n):  
         """This function is to calculate the walkoff at a given refractive index"""
@@ -304,7 +344,7 @@ if __name__ == '__main__':
 #            print ('wl: {}, tt: {}, theta: {}, phi: {}'.format(wl, tt, theta, phi))
 #            test1(lbo)            
     
-    lbo = crystal(lbo3, 532, 25, 90, 11.4)
+    lbo = crystal(lbo3, 532, 25, 86.9, 39.5)
 #    lbo.tt = 25
 #    lbo.wl = 532
 #    lbo.delta = 90
