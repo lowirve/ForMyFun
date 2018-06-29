@@ -277,9 +277,9 @@ if __name__ == "__main__":
     #sys.path.append(r'E:\xbl_Berry\Desktop\Python project\Packages\lib')
     
     from timeit import default_timer as timer
-    from simulation.nonlinear.gpu import sfg   
+    from nonlinear.gpu import sfg   
     
-    from plot.xy import image
+#    from plot.xy import image
       
     xsize = 128
     ysize = 128
@@ -332,10 +332,10 @@ if __name__ == "__main__":
     
     sol = test.get()[2]
     
-    image(A[xsize//2,:,:])
-    image(B[xsize//2,:,:])
-    image(C[xsize//2,:,:])
-    image(sol[xsize//2,:,:])
+#    image(A[xsize//2,:,:])
+#    image(B[xsize//2,:,:])
+#    image(C[xsize//2,:,:])
+#    image(sol[xsize//2,:,:])
     
     end = timer()    
     print (end-start)

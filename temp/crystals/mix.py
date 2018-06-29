@@ -383,6 +383,21 @@ class phasematch(object):
         theta, phi = self.angles[key1][key2]
         self._update(self._crystals, self.wls, self.tt, theta, phi)
         return self._crystals
+    
+    def parameters(self, key1, key2, key3):
+        theta, phi = self.angles[key1][key2]
+        self._update(self._crystals, self.wls, self.tt, theta, phi)
+        
+        results = []
+        
+        deff = self.fdeff(self._crystals, key2, key1, theta, phi)#beware the unit here is pm/V
+        
+        for cry, polarization in zip(self._crystals, key3):
+            i = 0 if polarization == 'hi' else 1
+            results.append(2*np.pi/cry.nhl[i]/cry.wl*1e3*deff/1e6) # convert wl and deff to common unit system
+            
+        return tuple(results+[0]) #right now assume delta k is always 0. Need to be upgrade later.
+            
    
 if __name__ == '__main__':    
     from data import lbo3
@@ -394,6 +409,9 @@ if __name__ == '__main__':
     print(p.data['XY'])
     print()
     print(p.crystals('XY', 'ooe'))
+    print()
+    print(p.parameters('XY', 'ooe', ['hi', 'hi', 'lo']))
+    
     
     
 
