@@ -176,25 +176,25 @@ if __name__ == '__main__':
             
             temp.append(evolution(space, crystals, keys, lasers, args, sfg, z, step))
             
-        p = np.polyfit(xaxis[1:], temp, 1)
-    
-        ax.plot(xaxis[1:], temp, linestyle='-', marker='o')
-    
-        ax.plot(xaxis, p[0]*xaxis+p[1], linestyle='-')
-        
-        times.append(temp)
-        print()
-        
-    times = np.array(times)    
-    
-    np.savetxt('data.csv', times, delimiter='\t')        
-
-    ax.set_xscale('log')
-    ax.set_yscale('log')
-    
-    plt.tight_layout()
-    
-    plt.show()
-    
+#        p = np.polyfit(xaxis[1:], temp, 1)
+#    
+#        ax.plot(xaxis[1:], temp, linestyle='-', marker='o')
+#    
+#        ax.plot(xaxis, p[0]*xaxis+p[1], linestyle='-')
+#        
+#        times.append(temp)
+#        print()
+#        
+#    times = np.array(times)    
+#    
+#    np.savetxt('data.csv', times, delimiter='\t')        
+#
+#    ax.set_xscale('log')
+#    ax.set_yscale('log')
+#    
+#    plt.tight_layout()
+#    
+#    plt.show()
+#    
     
     

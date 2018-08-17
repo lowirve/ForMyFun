@@ -19,13 +19,29 @@ e0 = 8.854187817e-18 #F/um (V/C/um)
 
 class laser(object):
     
-    def __init__(self, Iprofile, coord, pe, n=1, phase=0):#pe is short for pulse energy or power
+    @property
+    def Eprofile(self):
+        return self._Eprofile
+    
+    @Eprofile.setter
+    def Eprofile(self, Eprofile):
+        self._Eprofile = Eprofile
+        
+    
+    def __init__(self, Eprofile, coord, pe, n=1, phase=0):#pe is short for pulse energy or power
         
         self.coordinate = coord
         
         self.Iprofile = pe/integrate(Iprofile, coord.step())*Iprofile
         
-        self.Eprofile = np.sqrt(2*self.Iprofile/c/e0/n)*np.exp(1j*phase)
+        self.Eprofile = Eprofile
+        
+        
+    def EtoI(self, Eprofile, n=1):
+        return 0.5*np.abs(Eprofile)**2*c*e0*n
+        
+    def ItoE(self, Iprofile, phase=0, n=1):
+        return np.sqrt(2*Iprofile/c/e0/n)*np.exp(1j*phase)
         
     def _pe(self):
         return integrate(self.Iprofile, self.coordinate.step())
